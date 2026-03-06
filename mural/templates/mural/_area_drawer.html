@@ -1,0 +1,26 @@
+{% comment %} Include: panel lateral de áreas (drawer) {% endcomment %}
+<div id="areaDrawer">
+  <div class="drawer-header">
+    <div class="level is-mobile">
+      <div class="level-left">
+        <div class="level-item">
+          <p class="title is-6">Barra De Opciones</p>
+        </div>
+      </div>
+      <div class="level-right">
+        <button class="delete" aria-label="cerrar" id="closeDrawerBtn"></button>
+      </div>
+    </div>
+  </div>
+  <div class="drawer-body">
+    <div style="padding:1rem; display:flex; flex-direction:column; gap:0.5rem;">
+      <a id="backToMenuBtn" href="{% url 'index' %}" class="button is-fullwidth is-light">← Volver al menú</a>
+    </div>
+  </div>
+  <div class="drawer-footer" style="padding:0.75rem; border-top:1px solid #eee; display:flex; flex-direction:column; gap:0.5rem;">
+    <p class="is-size-7 has-text-grey" style="margin-bottom:0.5rem"> Acceso restringido</p>
+    <a href="{% url 'login' %}" class="button is-fullwidth" title="Acceso restringido - requiere credenciales" style="background-color:#005c3c; border-color:#005c3c; color:#fff;"><i class="fas fa-lock"> <br></i> Acceso restringido</a>
+    <p class="is-size-7 has-text-grey" style="margin-top:0.5rem; margin-bottom:0;">Solo usuarios autorizados</p>
+  </div>
+</div>
+<div id="drawerBackdrop"></div>

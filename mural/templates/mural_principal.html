@@ -1,0 +1,809 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Carrera Connect</title>
+
+  <!-- Favicon -->
+  <link rel="icon" href="{% static 'img/favicon.ico' %}">
+
+  <!-- Bulma CSS -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css"
+  />
+
+  <style>
+    /* Barra superior en tono similar a Santo Tomás */
+    .navbar.is-st-green {
+      background-color: #005c3c; /* verde oscuro */
+    }
+
+    .navbar.is-st-green .navbar-item,
+    .navbar.is-st-green .navbar-link,
+    .navbar.is-st-green .navbar-item span {
+      color: #ffffff;
+    }
+
+    /* Panel lateral de áreas y carreras */
+    #areaDrawer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      width: 260px;
+      background-color: #ffffff;
+      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.15);
+      transform: translateX(-100%);
+      transition: transform 0.25s ease-out;
+      z-index: 40;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #areaDrawer.is-active {
+      transform: translateX(0);
+    }
+
+    #areaDrawer .drawer-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid #e5e5e5;
+    }
+
+    #areaDrawer .drawer-header .title {
+      margin-bottom: 0;
+      font-size: 1.1rem;
+    }
+
+    #areaDrawer .drawer-body {
+      padding: 0.5rem 0;
+      overflow-y: auto;
+    }
+
+    #areaDrawer .menu-list a.is-active {
+      background-color: #eef7f3;
+      color: #005c3c;
+      font-weight: 600;
+    }
+
+    /* Capa oscura cuando se abre el panel */
+    #drawerBackdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.35);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease-out;
+      z-index: 30;
+    }
+
+    #drawerBackdrop.is-active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Tarjetas de contenido en grid responsivo */
+    .mural-grid {
+      margin-top: 1.5rem;
+    }
+
+    .mural-card {
+      cursor: pointer;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Colores de fondo para las cards con opacidad 25% */
+    .mural-card.color-verde { background-color: rgba(0,92,60,0.25); }
+    .mural-card.color-azul { background-color: rgba(0,123,255,0.25); }
+    .mural-card.color-rojo { background-color: rgba(220,53,69,0.25); }
+    .mural-card.color-amarillo { background-color: rgba(255,193,7,0.25); }
+    .mural-card.color-blanco { background-color: rgba(255,255,255,0.25); }
+
+    /* Asegurar legibilidad: borde y suavizado */
+    .mural-card { border-radius: 6px; border: 1px solid rgba(0,0,0,0.06); }
+
+    .mural-card .card-content {
+      flex: 1;
+    }
+
+    .tag-area {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* Modal para detalle de contenido */
+    .modal-card-body p + p {
+      margin-top: 0.75rem;
+    }
+
+    @media (max-width: 768px) {
+      .navbar-brand .navbar-item.is-logo {
+        margin-left: auto;
+        margin-right: auto;
+      }
+    }
+    /* Centrar logo y mostrar el botón burger siempre como botón visible */
+    .navbar-brand {
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
+
+    .navbar-item.is-logo {
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    #openDrawerBtn {
+      margin-left: 0.75rem;
+      margin-right: 0.75rem;
+    }
+    /* (Removed high-contrast styles) */
+    /* main content transform helper (zoom) */
+    #mainContent { transform-origin: 0 0; }
+
+    /* Encabezado de grupo más destacado */
+    .group-header {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #005c3c;
+      margin-top: 0.6rem;
+      margin-bottom: 0.15rem;
+    }
+    /* Modal header layout: separar botón de cierre a la derecha */
+    .modal-card-head .modal-head-left {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .modal-card-head .modal-meta {
+      margin-top: 0.25rem;
+      color: #7a7a7a;
+      font-size: 0.85rem;
+    }
+    /* Center attachments inside modal and limit max heights for media */
+    #modalAttachments {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+    #modalAttachments .attachment-wrapper { width: 100%; display:flex; justify-content:center; }
+    #modalAttachments img { max-width: 100%; max-height: 70vh; display:block; border-radius:4px; }
+    #modalAttachments iframe { width: 100%; max-height: 80vh; border: none; }
+    /* Attachment toolbar and zoom helpers */
+    /* toolbar: vertical column of small buttons (images only) */
+    .attachment-toolbar { display:flex; flex-direction:column; gap:0.35rem; align-items:flex-end; margin-bottom:0.5rem; }
+    .attachment-toolbar .button { padding: .25rem .45rem; font-size:0.85rem; }
+    /* position controls slightly outside the pdf viewport */
+
+    /* Right-side toolbar positioned just outside the viewport for consistent visibility */
+    .pdf-right-toolbar {
+      position: absolute;
+      right: -56px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      z-index: 230;
+      align-items: center;
+    }
+    /* overlay used to capture drag/pan gestures over the preview */
+    .pdf-drag-overlay { position:absolute; inset:0; z-index:50; cursor:grab; background:transparent; }
+    .pdf-control { background: rgba(255,255,255,0.95); border: 1px solid rgba(0,0,0,0.08); padding: .25rem .45rem; border-radius: 4px; cursor: pointer; }
+      /* modal sizing: wider and allow body to scroll when content tall; make it draggable */
+      .modal-card {
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 80%;
+        max-width: 900px;
+        touch-action: none;
+        display: flex;
+        flex-direction: column;
+        max-height: 90vh;
+      }
+      /* Cursor for dragging is applied to the header only; avoid showing move cursor
+         for the entire modal so content doesn't appear draggable. */
+      .modal-card .modal-card-head { position: relative; z-index: 1000; cursor: grab; }
+      .modal-card .modal-card-body { overflow: auto; flex: 1 1 auto; }
+      .modal-card .modal-card-foot { flex: 0 0 auto; }
+    /* Make attachment previews taller to improve PDF viewing */
+    .attachment-viewport { overflow:auto; width:100%; max-height: 90vh; position: relative; }
+    .attachment-viewport .zoomable { transform-origin: 0 0; display:block; }
+    #modalAttachments img { max-height: 88vh; }
+    #modalAttachments iframe { max-height: 88vh; }
+    /* ensure wrapper leaves space for external controls */
+    .attachment-wrapper { position: relative; padding-left: 64px; padding-right: 64px; }
+    /* Hide the text label next to the icon on very small screens to save space */
+    .type-label { display: inline-block; }
+    @media (max-width: 420px) {
+      .type-label { display: none; }
+    }
+    /* When drawer is open we may hide the main section to avoid duplicated UI
+       and keep focus on the drawer. */
+    .drawer-main-hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <!-- NAVBAR PRINCIPAL -->
+  <nav class="navbar is-st-green" role="navigation" aria-label="main navigation">
+    <div class="navbar-brand">
+      <!-- Botón visible para abrir menú lateral de áreas -->
+      <button class="button is-light is-small" id="openDrawerBtn" aria-label="abrir panel de áreas">
+        <span class="icon is-small"><i class="fas fa-bars"></i></span>
+      </button>
+
+      <!-- Zoom / contraste -->
+      <button class="button is-light is-small" id="zoomOutBtn" aria-label="reducir zoom" title="Reducir zoom">
+        <span class="icon is-small"><i class="fas fa-search-minus"></i></span>
+      </button>
+      <button class="button is-light is-small" id="zoomInBtn" aria-label="aumentar zoom" title="Aumentar zoom">
+        <span class="icon is-small"><i class="fas fa-search-plus"></i></span>
+      </button>
+      <!-- Contrast control removed -->
+
+      <!-- Logo centrado -->
+      <a class="navbar-item is-logo">
+        <div class="has-text-centered" style="width: 100%;">
+          <p class="has-text-weight-semibold" style="color: #ffffff;">CARRERA CONNECT</p>
+          <p class="is-size-7" style="color: #d8f5ea;">Mural Digital Institucional</p>
+        </div>
+      </a>
+    </div>
+  </nav>
+
+  <!-- PANEL LATERAL DE ÁREAS Y CARRERAS (include) -->
+  {% include 'mural/_area_drawer.html' %}
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <section id="mainContent" class="section">
+    <div class="container">
+      <!-- Encabezado simple -->
+      <div class="level">
+        <div class="level-left">
+          <div class="level-item">
+            {% if area_actual %}
+            <h1 class="title is-4">{{ area_actual.nombre }}</h1>
+            {% else %}
+            <h1 class="title is-4">Mural institucional</h1>
+            {% endif %}
+          </div>
+        </div>
+        <div class="level-right">
+          <div class="level-item">
+            <!-- Botón secundario eliminado: ahora sólo el botón del navbar abre el panel -->
+          </div>
+        </div>
+      </div>
+
+      <!-- GRID DE CONTENIDOS -->
+      <div class="columns is-multiline mural-grid">
+        {% for contenido in contenidos %}
+        <div class="column is-12-mobile is-6-tablet is-4-desktop">
+          <div
+            class="card mural-card {% if contenido.color %}color-{{ contenido.color }}{% endif %}"
+            data-titulo="{{ contenido.titulo|escape }}"
+            data-resumen="{{ contenido.breve_descripcion|default_if_none:''|escape }}"
+            data-area="{% if contenido.area_origen %}{{ contenido.area_origen.nombre|escape }}{% else %}General{% endif %}"
+            data-fecha="{{ contenido.fecha_creacion|date:'d/m/Y H:i' }}"
+            data-fecha-limite="{% if contenido.min_fecha_limite %}{{ contenido.min_fecha_limite|date:'d/m/Y H:i' }}{% endif %}"
+          >
+            <header class="card-header">
+              <p class="card-header-title is-size-6">
+                {{ contenido.titulo }}
+              </p>
+              <div class="card-header-icon" style="align-items:center;">
+                {% comment %} Simplificado: sólo 3 tipos relevantes (AVISO, EVENTO, ALERTA) + default {% endcomment %}
+                {% if contenido.tipo_contenido == 'ALERTA' %}
+                  <span class="tag is-danger is-small" style="margin-right:0.5rem; display:flex; align-items:center;">
+                    <span class="icon"><i class="fas fa-exclamation-triangle"></i></span>
+                    <span class="type-label" style="margin-left:0.4rem;">{{ contenido.get_tipo_contenido_display }}</span>
+                  </span>
+                {% elif contenido.tipo_contenido == 'EVENTO' %}
+                  <span class="tag is-light is-small" style="margin-right:0.5rem; display:flex; align-items:center;">
+                    <span class="icon"><i class="fas fa-calendar-alt"></i></span>
+                    <span class="type-label" style="margin-left:0.4rem;">{{ contenido.get_tipo_contenido_display }}</span>
+                  </span>
+                {% elif contenido.tipo_contenido == 'AVISO' %}
+                  <span class="tag is-light is-small" style="margin-right:0.5rem; display:flex; align-items:center;">
+                    <span class="icon"><i class="fas fa-info-circle"></i></span>
+                    <span class="type-label" style="margin-left:0.4rem;">{{ contenido.get_tipo_contenido_display }}</span>
+                  </span>
+                {% else %}
+                  <span class="tag is-light is-small" style="margin-right:0.5rem; display:flex; align-items:center;">
+                    <span class="icon"><i class="fas fa-file"></i></span>
+                    <span class="type-label" style="margin-left:0.4rem;">{{ contenido.get_tipo_contenido_display }}</span>
+                  </span>
+                {% endif %}
+              </div>
+            </header>
+            <div class="card-content">
+              <p class="is-size-7 has-text-grey">{{ contenido.fecha_creacion|date:"d \\d\\e F" }}</p>
+              <p class="mt-2">{{ contenido.breve_descripcion }}</p>
+              {# Hidden attachments list to be used by JS when opening modal #}
+              <div class="card-attachments" style="display:none;">
+                {% for archivo in contenido.archivos.all %}
+                  <a class="attachment-link" href="{{ archivo.archivo.url }}"
+                     data-name="{{ archivo.archivo.name|escapejs }}"
+                     data-mimetype="{{ archivo.tipo_archivo|escapejs }}">
+                    {% if archivo.archivo.name|slice:":14" == "mural_archivos/" %}
+                      {{ archivo.archivo.name|slice:"14:" }}
+                    {% else %}
+                      {{ archivo.archivo.name }}
+                    {% endif %}
+                  </a>
+                {% empty %}
+                {% endfor %}
+              </div>
+              {# Guardar el cuerpo completo en un div oculto para evitar inyectar HTML en atributos data-*. #}
+              <div class="card-full-body" style="display:none;">{{ contenido.contenido|default_if_none:''|linebreaksbr }}</div>
+            </div>
+            <footer class="card-footer">
+              <span class="card-footer-item is-size-7 has-text-link">Ver detalle</span>
+            </footer>
+          </div>
+        </div>
+        {% empty %}
+        <div class="column is-12">
+          <div class="notification is-light">
+            No hay contenidos publicados para esta área por el momento.
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <!-- MODAL DE DETALLE DE CONTENIDO -->
+      <div class="modal" id="contenidoModal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+      <header class="modal-card-head">
+        <div class="modal-head-left">
+          <p class="modal-card-title" id="modalTitulo">Título del contenido</p>
+          <div class="modal-meta" aria-hidden="true">
+            <span id="modalFecha">Fecha</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <div class="modal-area-right" style="font-size:0.9rem;color:#7a7a7a;margin-right:1rem;"> 
+            <span id="modalArea">Área</span>
+          </div>
+          <button class="delete" aria-label="close" id="cerrarModalBtn"></button>
+        </div>
+      </header>
+      <section class="modal-card-body">
+        <div id="modalCuerpo" ></div>
+        <div id="modalAttachments" style="margin-top:1rem;"></div>
+      </section>
+      <footer class="modal-card-foot">
+        <button class="button" id="cerrarModalBtnFooter">Cerrar</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Font Awesome para icono (opcional) -->
+  <script
+    defer
+    src="https://use.fontawesome.com/releases/v5.15.4/js/all.js"
+  ></script>
+
+  <script>
+    // --- LÓGICA PANEL LATERAL ---
+    const drawer = document.getElementById("areaDrawer");
+    const backdrop = document.getElementById("drawerBackdrop");
+    const openDrawerBtn = document.getElementById("openDrawerBtn");
+    const closeDrawerBtn = document.getElementById("closeDrawerBtn");
+
+    function openDrawer() {
+      drawer.classList.add("is-active");
+      backdrop.classList.add("is-active");
+      // hide main content to avoid duplicate UI (levels/areas) while drawer open
+      const mainSection = document.querySelector('section');
+      if (mainSection) mainSection.classList.add('drawer-main-hidden');
+    }
+
+    function closeDrawer() {
+      drawer.classList.remove("is-active");
+      backdrop.classList.remove("is-active");
+      const mainSection = document.querySelector('section');
+      if (mainSection) mainSection.classList.remove('drawer-main-hidden');
+    }
+
+    if (openDrawerBtn) openDrawerBtn.addEventListener("click", openDrawer);
+    if (closeDrawerBtn) closeDrawerBtn.addEventListener("click", closeDrawer);
+    if (backdrop) backdrop.addEventListener("click", closeDrawer);
+
+    // Back button inside drawer to return to main menu / select another area
+    const backToMenuBtn = document.getElementById('backToMenuBtn');
+    if (backToMenuBtn) backToMenuBtn.addEventListener('click', function(){
+      // close drawer and restore main section
+      closeDrawer();
+      // small timeout to ensure transition looks natural
+      setTimeout(()=>{
+        const mainSection = document.querySelector('section');
+        if (mainSection) mainSection.classList.remove('drawer-main-hidden');
+      }, 120);
+    });
+
+    // --- Zoom y contraste ---
+    let zoomLevel = parseFloat(localStorage.getItem('muralZoom')) || 1;
+    const ZOOM_STEP = 0.1;
+    const ZOOM_MIN = 0.6;
+    const ZOOM_MAX = 1.6;
+
+    function applyZoom(){
+      const main = document.getElementById('mainContent');
+      if(!main) return;
+      main.style.transform = `scale(${zoomLevel})`;
+      main.style.width = (100 / zoomLevel) + '%';
+    }
+
+    function changeZoom(delta){
+      zoomLevel = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, +(zoomLevel + delta).toFixed(2)));
+      localStorage.setItem('muralZoom', zoomLevel);
+      applyZoom();
+    }
+
+    const zoomOutBtn = document.getElementById('zoomOutBtn');
+    const zoomInBtn = document.getElementById('zoomInBtn');
+    if(zoomOutBtn) zoomOutBtn.addEventListener('click', ()=> changeZoom(-ZOOM_STEP));
+    if(zoomInBtn) zoomInBtn.addEventListener('click', ()=> changeZoom(ZOOM_STEP));
+
+    // Inicializar estado guardado (si aplica)
+    (function(){
+      const savedZoom = parseFloat(localStorage.getItem('muralZoom'));
+      if(!isNaN(savedZoom)) zoomLevel = savedZoom;
+      applyZoom();
+    })();
+
+    // --- LÓGICA MODAL DE CONTENIDO ---
+    const modal = document.getElementById("contenidoModal");
+    const modalTitulo = document.getElementById("modalTitulo");
+    const modalArea = document.getElementById("modalArea");
+    const modalFecha = document.getElementById("modalFecha");
+    // los siguientes elementos pueden no existir si están comentados en el HTML
+    const modalResumen = document.getElementById("modalResumen");
+    const modalCuerpo = document.getElementById("modalCuerpo");
+    const cerrarModalBtn = document.getElementById("cerrarModalBtn");
+    const cerrarModalBtnFooter = document.getElementById(
+      "cerrarModalBtnFooter"
+    );
+
+    function abrirModalDesdeCard(card) {
+      modalTitulo.textContent = card.dataset.titulo || "Contenido";
+      modalArea.textContent = card.dataset.area || "Área general";
+      // Mostrar fecha de creación y, si existe, la fecha límite con hora
+      const created = card.dataset.fecha || "";
+      const limite = card.dataset.fechaLimite || "";
+      modalFecha.textContent = created || "";
+      if (limite) {
+        modalFecha.textContent = (created ? created + ' | ' : '') + 'Límite: ' + limite;
+      }
+      // rellenar resumen y cuerpo sólo si los elementos existen en el DOM
+      if (modalResumen) modalResumen.textContent = card.dataset.resumen || "";
+      // Leer el cuerpo completo desde el div oculto dentro de la card (evita inyectar HTML en data-*)
+      const fullBodyDiv = card.querySelector('.card-full-body');
+      if (modalCuerpo) modalCuerpo.innerHTML = (fullBodyDiv ? fullBodyDiv.innerHTML : '') || '';
+
+      // Render attachments previews
+      const attachmentsContainer = document.getElementById('modalAttachments');
+      attachmentsContainer.innerHTML = '';
+      const attachmentsDiv = card.querySelector('.card-attachments');
+      if (attachmentsDiv) {
+        const links = attachmentsDiv.querySelectorAll('.attachment-link');
+        links.forEach(a => {
+          const url = a.getAttribute('href');
+          const name = a.dataset.name || a.textContent || '';
+          const mimetype = (a.dataset.mimetype || '').toLowerCase();
+          const wrap = document.createElement('div');
+          wrap.className = 'attachment-wrapper';
+
+          const ext = (name.split('.').pop() || '').toLowerCase();
+          const imageExts = ['jpg','jpeg','png','gif','webp'];
+
+          if (mimetype.startsWith('image/') || imageExts.includes(ext)) {
+            const img = document.createElement('img');
+            img.src = url;
+            img.alt = name.split('/').pop() || name;
+            wrap.appendChild(img);
+                // add zoom toolbar for images (zoom only)
+                const toolbar = document.createElement('div');
+                toolbar.className = 'attachment-toolbar';
+                const zoomOut = document.createElement('button'); zoomOut.className='button'; zoomOut.textContent='−';
+                const zoomIn = document.createElement('button'); zoomIn.className='button'; zoomIn.textContent='+';
+                toolbar.appendChild(zoomOut); toolbar.appendChild(zoomIn);
+                const viewport = document.createElement('div'); viewport.className='attachment-viewport';
+                img.classList.add('zoomable');
+                viewport.appendChild(img);
+                wrap.appendChild(toolbar);
+                wrap.appendChild(viewport);
+                // zoom state
+                let zoom = 1;
+                function applyZoom() { img.style.transform = `scale(${zoom})`; }
+                zoomIn.addEventListener('click', () => { zoom = Math.min(4, +(zoom + 0.25).toFixed(2)); applyZoom(); });
+                zoomOut.addEventListener('click', () => { zoom = Math.max(0.25, +(zoom - 0.25).toFixed(2)); applyZoom(); });
+          } else if (mimetype === 'application/pdf' || ext === 'pdf') {
+            // embed PDF in iframe for preview (no download)
+            const viewport = document.createElement('div'); viewport.className='attachment-viewport';
+            const iframe = document.createElement('iframe');
+            // try to hint viewers to hide toolbars; many browser viewers ignore this, but it's a best-effort
+            let iframeSrc = url;
+            if (!iframeSrc.includes('#')) {
+              iframeSrc = iframeSrc + '#toolbar=0';
+            } else {
+              iframeSrc = iframeSrc + '&toolbar=0';
+            }
+            iframe.src = iframeSrc;
+            iframe.className='zoomable';
+            viewport.appendChild(iframe);
+            // position wrap relatively so controls can be absolute
+            wrap.style.position = 'relative';
+
+            // overlay to capture drag/pan gestures over the preview without affecting iframe internals
+            const overlay = document.createElement('div'); overlay.className = 'pdf-drag-overlay';
+            // ensure overlay sits above iframe; start disabled so it doesn't block normal interactions
+            overlay.style.zIndex = '9999';
+            overlay.style.pointerEvents = 'none'; // disabled until user starts a drag
+            overlay.style.touchAction = 'none';
+            overlay.style.cursor = 'default';
+            viewport.appendChild(overlay);
+
+            // append only the viewport (no side controls)
+            wrap.appendChild(viewport);
+
+            // zoom logic for iframe: scale the iframe element (best-effort; may be limited by X-Frame-Options/CSP)
+            let zoom = 1;
+            function applyIframeZoom() {
+              iframe.style.transform = `scale(${zoom})`;
+              iframe.style.width = `${100 / zoom}%`;
+            }
+            // Note: side controls removed — zoom can still be applied programmatically
+
+            // implement drag-to-pan on overlay: click/touch + move will pan the viewport
+            (function(){
+              let isPanning = false;
+              let startX = 0, startY = 0, startScrollLeft = 0, startScrollTop = 0;
+
+              function startPan(e){
+                // start pan only on primary button or touch
+                if (e.type === 'mousedown' && e.button !== 0) return;
+                e.preventDefault();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                isPanning = true;
+                startX = clientX;
+                startY = clientY;
+                startScrollLeft = viewport.scrollLeft;
+                startScrollTop = viewport.scrollTop;
+                // activate overlay so it captures subsequent move/end events
+                overlay.style.pointerEvents = 'auto';
+                overlay.style.cursor = 'grabbing';
+                document.body.style.userSelect = 'none';
+                // Temporarily disable pointer events on iframe so the overlay receives all drag events
+                try { iframe.style.pointerEvents = 'none'; } catch(e){}
+              }
+
+              function onPan(e){
+                if (!isPanning) return;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                const dx = startX - clientX;
+                const dy = startY - clientY;
+                viewport.scrollLeft = startScrollLeft + dx;
+                viewport.scrollTop = startScrollTop + dy;
+              }
+
+              function endPan(){
+                if (!isPanning) return;
+                isPanning = false;
+                overlay.style.cursor = 'default';
+                document.body.style.userSelect = '';
+                // restore iframe pointer events
+                try { iframe.style.pointerEvents = ''; } catch(e){}
+                // deactivate overlay so it no longer blocks clicks to iframe
+                overlay.style.pointerEvents = 'none';
+              }
+
+              // To avoid the overlay permanently blocking the iframe, keep it disabled
+              // and forward the initial pointer events from the viewport to start the pan.
+              viewport.addEventListener('mousedown', function(e){
+                // only start when clicking directly over the viewport area
+                startPan(e);
+              });
+              viewport.addEventListener('touchstart', function(e){ startPan(e); }, {passive:false});
+              overlay.addEventListener('mousedown', startPan);
+              overlay.addEventListener('touchstart', startPan, {passive:false});
+              window.addEventListener('mousemove', onPan);
+              window.addEventListener('touchmove', onPan, {passive:false});
+              window.addEventListener('mouseup', endPan);
+              window.addEventListener('touchend', endPan);
+            })();
+          } else {
+            // Not supported for preview: show filename and note
+            const info = document.createElement('div');
+            info.textContent = (name.split('/').pop() || name) + ' — previsualización no disponible';
+            info.style.padding = '0.5rem 0';
+            info.style.background = '#f5f5f5';
+            info.style.borderRadius = '4px';
+            wrap.appendChild(info);
+          }
+
+          attachmentsContainer.appendChild(wrap);
+        });
+      }
+
+      // center modal and reset any drag transform
+      const modalCardEl = modal.querySelector('.modal-card');
+      if (modalCardEl) {
+        modalCardEl.style.left = '50%';
+        modalCardEl.style.top = '50%';
+        modalCardEl.style.transform = 'translate(-50%, -50%)';
+        // do not add a 'draggable' class to the whole modal; the header is the drag handle
+      }
+      modal.classList.add("is-active");
+    }
+
+    function cerrarModal() {
+      // Pause any playing media and remove sources to stop network streaming
+      const attachments = document.getElementById('modalAttachments');
+      if (attachments) {
+        attachments.querySelectorAll('video').forEach(v => {
+          try { v.pause(); } catch(e){}
+          // remove sources to stop streaming
+          v.querySelectorAll('source').forEach(s => s.src = '');
+          v.removeAttribute('src');
+          v.load && v.load();
+        });
+        attachments.querySelectorAll('audio').forEach(a => {
+          try { a.pause(); } catch(e){}
+          a.querySelectorAll('source').forEach(s => s.src = '');
+          a.removeAttribute('src');
+          a.load && a.load();
+        });
+        // restore any iframe pointer events and remove/disable drag overlays
+        attachments.querySelectorAll('iframe').forEach(ifr => {
+          try { ifr.style.pointerEvents = ''; } catch(e){}
+        });
+        attachments.querySelectorAll('.pdf-drag-overlay').forEach(ov => {
+          try { ov.style.pointerEvents = 'none'; ov.remove(); } catch(e){}
+        });
+      }
+      modal.classList.remove("is-active");
+    }
+
+    // Use event delegation on the mural grid instead of attaching handlers
+    // to each card. This avoids cloning nodes and layout reflows when the
+    // grid is replaced during auto-refresh.
+    function setupCardDelegation(){
+      const grid = document.querySelector('.mural-grid');
+      if (!grid) return;
+      // Avoid installing multiple times
+      if (grid._delegationInstalled) return;
+      grid.addEventListener('click', (ev) => {
+        const card = ev.target.closest('.mural-card');
+        if (!card) return;
+        abrirModalDesdeCard(card);
+      });
+      grid._delegationInstalled = true;
+    }
+
+    // Install delegation once
+    setupCardDelegation();
+
+    // --- Modal dragging support ---
+    (function(){
+      const modalCard = document.querySelector('.modal-card');
+      let isDragging = false;
+      let offsetX = 0, offsetY = 0;
+
+      function startDrag(e){
+        // only start drag on left mouse button or touch
+        if (e.type === 'mousedown' && e.button !== 0) return;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const rect = modalCard.getBoundingClientRect();
+        offsetX = clientX - rect.left;
+        offsetY = clientY - rect.top;
+        isDragging = true;
+        modalCard.style.transform = 'none';
+        modalCard.style.left = rect.left + 'px';
+        modalCard.style.top = rect.top + 'px';
+        document.body.style.userSelect = 'none';
+      }
+
+      function onDrag(e){
+        if (!isDragging) return;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        let left = clientX - offsetX;
+        let top = clientY - offsetY;
+        // clamp to viewport
+        const pad = 8;
+        const maxLeft = window.innerWidth - modalCard.offsetWidth - pad;
+        const maxTop = window.innerHeight - modalCard.offsetHeight - pad;
+        left = Math.max(pad, Math.min(maxLeft, left));
+        top = Math.max(pad, Math.min(maxTop, top));
+        modalCard.style.left = left + 'px';
+        modalCard.style.top = top + 'px';
+      }
+
+      function endDrag(){
+        if (!isDragging) return;
+        isDragging = false;
+        document.body.style.userSelect = '';
+      }
+
+      function install(){
+        if (!modalCard) return;
+        const head = modalCard.querySelector('.modal-card-head');
+        if (!head) return;
+        head.style.cursor = 'grab';
+        head.addEventListener('mousedown', startDrag);
+        // allow preventDefault during touchstart so we can control drag behaviour
+        head.addEventListener('touchstart', startDrag, {passive:false});
+        window.addEventListener('mousemove', onDrag);
+        window.addEventListener('touchmove', onDrag, {passive:true});
+        window.addEventListener('mouseup', endDrag);
+        window.addEventListener('touchend', endDrag);
+      }
+
+      // attempt to install now and also when modal opens (in case DOM not ready)
+      install();
+      document.addEventListener('DOMContentLoaded', install);
+    })();
+
+    if (cerrarModalBtn) cerrarModalBtn.addEventListener("click", cerrarModal);
+    if (cerrarModalBtnFooter)
+      cerrarModalBtnFooter.addEventListener("click", cerrarModal);
+    if (modal)
+      modal
+        .querySelector(".modal-background")
+        .addEventListener("click", cerrarModal);
+
+    // Cerrar modal con tecla ESC
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        cerrarModal();
+        closeDrawer();
+      }
+    });
+
+    // --- Auto-refresh del mural cada 20s (solo reemplaza el grid para evitar recargar toda la página)
+    const REFRESH_INTERVAL_MS = 20000;
+    async function refreshMural(){
+      try{
+        if (modal && modal.classList.contains('is-active')) return; // no refrescar si modal abierto
+        const res = await fetch(window.location.href, {cache: 'no-store'});
+        if (!res.ok) return;
+        const text = await res.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'text/html');
+        const newGrid = doc.querySelector('.mural-grid');
+        const curGrid = document.querySelector('.mural-grid');
+        if (newGrid && curGrid) {
+          curGrid.innerHTML = newGrid.innerHTML;
+          // Delegation listener is attached to the grid element and survives
+          // replacing innerHTML, so no need to rebind handlers here.
+          // ensure delegation is installed (idempotent)
+          setupCardDelegation();
+        }
+      }catch(e){
+        console.error('Error refrescando mural:', e);
+      }
+    }
+
+    // arrancar el refresco periódico
+    setInterval(refreshMural, REFRESH_INTERVAL_MS);
+  </script>
+</body>
+</html>

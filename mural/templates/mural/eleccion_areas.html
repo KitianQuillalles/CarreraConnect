@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block content %}
+  <h2>Seleccione un área</h2>
+  <p>Su usuario administra varias áreas. Elija a cuál ir:</p>
+  <ul>
+    {% for area in areas %}
+      <li><a href="{% url 'mural_area' area.id %}">{{ area.nombre }} ({{ area.categoria|default:'General' }})</a></li>
+    {% endfor %}
+  </ul>
+{% endblock %}

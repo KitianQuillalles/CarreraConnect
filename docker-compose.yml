@@ -1,0 +1,11 @@
+"# REMOVED: docker-compose.yml
+# Este archivo se dejó en blanco porque el proyecto vuelve a ejecutarse
+# con el servidor de desarrollo de Django. Para iniciar localmente:
+# 1) Crear/activar el entorno virtual
+# 2) Instalar dependencias: pip install -r requirements.txt
+# 3) Ejecutar: python manage.py migrate
+# 4) Ejecutar: python manage.py runserver
+
+# Si necesitas restaurar la configuración de Docker, recupérala
+# desde el control de versiones o crea una nueva composición.
+"

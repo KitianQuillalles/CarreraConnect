@@ -1,0 +1,51 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block extrastyle %}
+<style>
+  /* Ocultar la barra lateral en la página de login para que el diseño quede centrado */
+  #nav-sidebar, .app-list, .module-tools { display: none !important; }
+  /* Ajustes menores para que el formulario use estilos del admin */
+  #content-main { max-width: 100%; margin: 0 auto; }
+
+  /* Caja centrada similar al diseño por defecto del admin */
+  .login-wrapper { display: flex; justify-content: center; padding: 30px 10px; }
+  .login-box { width: 520px; background: #fff; padding: 28px; border-radius: 6px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); }
+  .login-box .module-title { margin-top: 0; margin-bottom: 18px; }
+  .form-row label { display: block; margin-bottom: 6px; color: #333; }
+  .submit-row { margin-top: 16px; }
+</style>
+{% endblock %}
+
+{% block content %}
+  <div id="content-main">
+    <div class="login-wrapper">
+      <div class="login-box">
+        <h1 class="module-title">{% trans "Iniciar sesión" %}</h1>
+
+        <form action="" method="post" id="login-form">{% csrf_token %}
+          {% if form.non_field_errors %}
+            <p class="errornote">{{ form.non_field_errors }}</p>
+          {% endif %}
+
+          <div class="form-row">
+            {{ form.username.errors }}
+            <label for="{{ form.username.id_for_label }}">Correo o nombre de usuario:</label>
+            {{ form.username }}
+          </div>
+
+          <div class="form-row">
+            {{ form.password.errors }}
+            <label for="{{ form.password.id_for_label }}">{% trans "Contraseña" %}:</label>
+            {{ form.password }}
+          </div>
+
+          <div class="submit-row">
+            <input type="submit" value="{% trans 'Entrar' %}" class="default" />
+            <input type="hidden" name="next" value="{{ next }}" />
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock %}

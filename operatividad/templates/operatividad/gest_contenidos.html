@@ -1,0 +1,1903 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gestión de Contenidos - Carrera Connect</title>
+
+  <!-- Bulma CSS -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css"
+  />
+  <!-- Font Awesome para iconos -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+  />
+  <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+  <!-- Choices.js (select mejorado, MIT) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+
+  <style>
+    /* Estilo verde de la institución */
+    .navbar.is-st-green {
+      background-color: #005c3c;
+      /* Permitir más espacio vertical para un logo más grande */
+      min-height: 88px !important;
+      padding-top: 0.5rem !important;
+      padding-bottom: 0.5rem !important;
+    }
+    .navbar.is-st-green .navbar-item,
+    .navbar.is-st-green .navbar-link {
+      color: #ffffff;
+    }
+    
+    /* Botones de acción del formulario */
+    .button.is-publicar {
+      background-color: #005c3c; /* Verde oscuro institucional (igual que navbar) */
+      color: #ffffff;
+      font-weight: 600;
+    }
+    .button.is-publicar:hover {
+      background-color: #00482f;
+    }
+    
+    /* La columna de vista previa será "pegajosa" */
+    .preview-column {
+      position: sticky;
+      top: 20px;
+    }
+
+    /* Estilos para la tarjeta de vista previa (como en mural_principal.html) */
+    .mural-card {
+      cursor: default;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    .mural-card .card-content {
+      flex: 1;
+    }
+    .tag-area {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* Ocultar el 'span' del nombre de archivo de Bulma si está vacío */
+    .file-name:not(:empty) {
+      display: inline-block;
+      border: 1px solid #dbdbdb;
+      border-radius: 4px;
+      padding: 0.5em 0.75em;
+      margin-left: 0.5rem;
+      font-size: 0.9em;
+    }
+    /* Ajustes para el logo en la navbar */
+    .navbar .navbar-item img {
+      height: 80px !important;
+      max-height: none !important;
+      width: auto !important;
+      display: block;
+    }
+
+    /* Reducir logo en móviles para evitar romper layout */
+    @media (max-width: 768px) {
+      .navbar.is-st-green { min-height: 56px !important; }
+      .navbar .navbar-item img { height: 48px !important; }
+    }
+    /* Navbar burger blanco y menú móvil visible */
+    .navbar-burger span {
+      background-color: #ffffff !important;
+    }
+    .navbar-burger {
+      color: #ffffff;
+    }
+    /* Forzar que el menú se muestre y tenga fondo verde en móviles */
+    .navbar-menu.is-active {
+      display: block !important;
+      background-color: #005c3c;
+      width: 100%;
+      padding: 0.5rem 1rem;
+      z-index: 50;
+    }
+    .navbar-menu {
+      background-color: transparent;
+    }
+    /* Asegurar que los items del menú sean legibles y apilados en móvil */
+    @media (max-width: 768px) {
+      .navbar-menu .navbar-end { display: block !important; }
+      .navbar-menu .navbar-item {
+        display: block !important;
+        color: #ffffff !important;
+        padding: 0.5rem 0 !important;
+      }
+      .navbar-menu .navbar-item:hover { background: rgba(255,255,255,0.04); }
+    }
+    /* Form grid spacing para inputs consistentes */
+    .form-grid { display: grid; gap: 1rem; }
+    .mb-3 { margin-bottom: .75rem; }
+    /* Estilos movidos de la sección principal (antes estaban dentro del body) */
+    .is-active-green {
+      background-color: #005c3c !important;
+      color: #ffffff !important;
+      border-color: transparent !important;
+      box-shadow: none !important;
+    }
+    .is-active-green .icon { color: #ffffff !important; }
+    .modal-badge { background:#005c3c; color:#fff; padding:2px 8px; border-radius:4px; font-size:0.8rem; }
+    .preview-card-wrapper { position: relative; }
+    .preview-label {
+      background-color: #005c3c;
+      color: #ffffff;
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .card.modal-bg { background-color: rgba(0,92,60,0.06); }
+    /* Neutralizar la etiqueta de tipo en la vista previa para garantizar legibilidad
+       aunque la tarjeta tenga fondo coloreado. Usamos selectores con id y !important
+       para sobreescribir reglas de Bulma u otras clases específicas. */
+    #preview-card-type {
+      background-color: rgba(255,255,255,0.92) !important;
+      color: #222 !important;
+      border: none !important;
+      padding: 0.15rem 0.4rem !important;
+      border-radius: 4px !important;
+    }
+    #preview-card-type .type-label {
+      background: transparent !important;
+      color: inherit !important;
+      font-weight: 600 !important;
+      padding-left: 0.25rem !important;
+    }
+    /* Asegurar que el input condicional 'OTRO' no aparezca en rojo
+       (sobrescribe clases Bulma como .is-danger que pueden marcarlo). */
+    #form-tipo-otro {
+      background-color: #fff !important;
+      color: #222 !important;
+      border: 1px solid #dbdbdb !important;
+      box-shadow: none !important;
+    }
+    #form-tipo-otro.is-danger {
+      border-color: #dbdbdb !important;
+      box-shadow: none !important;
+    }
+    /* Centrar miniaturas y contenido multimedia en el modal/vista previa */
+    #preview-file-view { text-align: center; }
+    #preview-file-view img { display: inline-block; margin: 0.5rem auto; max-width: 100%; height: auto; }
+    #preview-file-view a { display: inline-block; margin: 0.25rem 0; }
+  </style>
+</head>
+<body>
+
+  
+
+  <!-- Navbar del Panel -->
+  <nav class="navbar is-st-green" role="navigation" aria-label="main navigation">
+    <div class="navbar-brand">
+      <a class="navbar-item has-text-weight-semibold" href="{% url 'contenidos_mis_areas' %}" style="font-size:1.15rem; color:#ffffff;">
+        Carrera Connect
+      </a>
+      <!-- Burger para móviles: muestra/oculta el menú (saludo / cerrar sesión) -->
+      <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="mainNav">
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+      </a>
+    </div>
+    <div id="mainNav" class="navbar-menu">
+      <div class="navbar-end">
+                <!--a class="navbar-item" href="{% url 'gest_usuarios' %}">
+          Modificar Perfiles
+        </a-->
+        <div class="navbar-item">
+          Hola {{ request.user.get_full_name|default:request.user.username }}
+        </div>
+        <a class="navbar-item" href="{% url 'logout' %}">
+          Cerrar Sesión
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Menú de acciones separado (crear/editar, contenido publicado, futuras opciones) -->
+  <div class="container mt-3">
+      <div class="buttons" style="margin-bottom: 1rem; justify-content: flex-start;">
+        <a id="btn-crear-editar" class="button {% if filter_estado == 'PUBLICADO' %}is-light{% else %}is-active-green{% endif %}" href="{% url 'contenidos_mis_areas' %}#content-form">
+          <span class="icon"><i class="fas fa-plus"></i></span>
+          <span>Crear / Editar</span>
+        </a>
+        <a id="btn-contenido-publicado" class="button is-light{% if filter_estado == 'PUBLICADO' %} is-active-green{% endif %}" href="{% url 'contenidos_mis_areas' %}?estado=PUBLICADO">
+          <span class="icon"><i class="fas fa-list"></i></span>
+          <span>Lista De Contenidos</span>
+        </a>
+        <a id="btn-mi-perfil" class="button is-light" href="">
+          <span class="icon"><i class="fas fa-user"></i></span>
+          <span>Mi Perfil</span>
+        </a>
+        {% if can_manage_users %}
+        <a id="btn-gest-usuarios" class="button is-light" href="">
+          <span class="icon"><i class="fas fa-users-cog"></i></span>
+          <span>Gestionar Usuarios</span>
+        </a>
+        {% endif %}
+    </div>
+  </div>
+  {# Mensajes contextuales (Bulma notifications, colores 'light') #}
+  {% if messages %}
+  <div class="container mt-3">
+    {% for message in messages %}
+      {% if 'success' in message.tags %}
+        <div class="notification is-success is-light">{{ message }}</div>
+      {% elif 'error' in message.tags %}
+        <div class="notification is-danger is-light">{{ message }}</div>
+      {% elif 'warning' in message.tags %}
+        <div class="notification is-warning is-light">{{ message }}</div>
+      {% else %}
+        <div class="notification is-info is-light">{{ message }}</div>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Contenido Principal -->
+  <section class="section">
+    <div class="container">
+      <!-- Estilos movidos al head -->
+      {# JSON data para validación de archivos en JS #}
+      {{ allowed_extensions|default:"[]"|json_script:"allowedExt" }}
+      {{ max_size_mb|default:20|json_script:"maxSizeMb" }}
+      {{ size_by_type|default:"{}"|json_script:"sizeByType" }}
+      {# Exponer color inicial del contenido cuando estamos en modo edición para asegurar preview correcto #}
+      <div id="initial-contenido-data" data-color="{% if contenido %}{{ contenido.color|default:'' }}{% else %}{% endif %}" style="display:none"></div>
+      <!-- Flags del usuario expuestas como JSON para que el JS pueda leerlas sin interpolar directamente -->
+      <script id="current-user-flags" type="application/json">{"is_super": {{ request.user.is_superuser|yesno:"true,false" }}, "is_staff": {{ request.user.is_staff|yesno:"true,false" }}}</script>
+      <div class="columns">
+
+        <!-- ===== COLUMNA IZQUIERDA: FORMULARIO ===== -->
+        {% if filter_estado == 'PUBLICADO' %}
+        <div id="left-column" class="column is-12">
+          <div class="box">
+        {% else %}
+        <div id="left-column" class="column is-7">
+          <div class="box">
+        {% endif %}
+
+        <!-- Perfil de usuario: form alternativo (siempre presente en el DOM) -->
+        <div id="profile-panel" class="is-hidden">
+          <div class="box">
+            <h3 class="title is-5">Mi Perfil</h3>
+            <form id="profile-form" method="post" action="" novalidate>
+              {% csrf_token %}
+              <input type="hidden" name="profile_update" value="1">
+
+              <!-- Box con correo arriba y debajo, en paralelo, Carreras y Rol -->
+              <div class="box" style="background:#ffffff; border:1px solid #eaeaea; margin-bottom:1rem;">
+                <div style="padding:0.5rem 0.75rem;">
+                  <div style="margin-bottom:0.5rem;">
+                    <p class="is-size-7 has-text-grey">Correo Institucional</p>
+                    <p class="is-size-6">{{ request.user.email }}</p>
+                  </div>
+                  <div class="columns is-mobile is-vcentered" style="padding-top:0.25rem;">
+                    <div class="column">
+                      <p class="is-size-7 has-text-grey">Carrera(s) / Área(s)</p>
+                      <p class="is-size-6">
+                        {% if request.user.is_superuser %}
+                          Tiene permisos privilegiados sobre todas las carreras y puede gestionarlas.
+                        {% else %}
+                          {% if filter_areas and filter_areas|length > 0 %}
+                            {% for a in filter_areas %}
+                              {{ a.nombre }}{% if not forloop.last %}, {% endif %}
+                            {% endfor %}
+                          {% else %}
+                            Sin asignar
+                          {% endif %}
+                        {% endif %}
+                      </p>
+                    </div>
+                    <div class="column is-narrow">
+                      <p class="is-size-7 has-text-grey">Rol</p>
+                      <p class="is-size-6">{% if profile_role %}{{ profile_role }}{% else %}{% if request.user.is_superuser %}Administrador{% elif request.user.is_staff %}Staff{% else %}Usuario{% endif %}{% endif %}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="label">Nombre</label>
+                <div class="control">
+                  <input class="input" type="text" name="first_name" id="profile-first-name" value="{{ request.user.first_name }}">
+                </div>
+              </div>
+              <div class="field">
+                <label class="label">Apellido</label>
+                <div class="control">
+                  <input class="input" type="text" name="last_name" id="profile-last-name" value="{{ request.user.last_name }}">
+                </div>
+              </div>
+
+              <hr>
+              <div class="field">
+                <label class="label">Nueva Contraseña</label>
+                <div class="control">
+                  <input class="input" type="password" name="password1" id="profile-new-password" placeholder="Dejar en blanco para mantener la actual">
+                </div>
+              </div>
+              <div class="field">
+                <label class="label">Confirmar Nueva Contraseña</label>
+                <div class="control">
+                  <input class="input" type="password" name="password2" id="profile-new-password-confirm" placeholder="Confirme la nueva contraseña">
+                </div>
+              </div>
+              <div class="field is-grouped is-grouped-right">
+                <div class="control">
+                  <button type="submit" class="button is-publicar">Guardar Cambios</button>
+                </div>
+                <div class="control">
+                  <button type="button" id="profile-cancel" class="button">Cancelar</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+        <!-- Sección de gestión de usuarios (oculta por defecto) -->
+        <div id="users-section" class="is-hidden">
+          <div class="level">
+            <div class="level-left">
+              <h4 class="title is-5">Gestión de Usuarios</h4>
+              <p class="ml-3 is-size-7 has-text-grey">{{ users_list|length }} usuarios registrados</p>
+            </div>
+            <div class="level-right">
+              <div class="buttons">
+                <button id="btn-new-user" class="button is-success is-light"><span class="icon"><i class="fas fa-plus"></i></span><span>Nuevo Usuario</span></button>
+              </div>
+            </div>
+          </div>
+          {% if users_list %}
+            <div class="content">
+              {% for u in users_list %}
+                <article class="box">
+                  <div class="columns is-mobile is-vcentered">
+                    <div class="column">
+                      <p class="is-size-6 has-text-weight-semibold">{{ u.nombre }}</p>
+                      <p class="is-size-7 has-text-grey"><span class="icon"><i class="fas fa-envelope"></i></span> {{ u.email }} · {{ u.areas|join:", " }} · {{ u.role }}</p>
+                    </div>
+                    <div class="column is-narrow">
+                      <div class="buttons">
+                        <button class="button is-small" data-edit-user-id="{{ u.id }}" data-edit-user-name="{{ u.nombre|escapejs }}" data-edit-user-email="{{ u.email }}" data-edit-user-role="{{ u.role }}" data-edit-user-areas="{{ u.areas_ids|join:"," }}"><span class="icon"><i class="fas fa-edit"></i></span></button>
+                        <form method="post" action="{% url 'usuarios_eliminar' 0 %}" style="display:inline" onsubmit="return confirm('Eliminar usuario?');">
+                          {% csrf_token %}
+                          <input type="hidden" name="pk" value="{{ u.id }}">
+                          <button class="button is-small is-danger"><span class="icon"><i class="fas fa-trash"></i></span></button>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="notification is-light">No hay usuarios para mostrar.</div>
+          {% endif %}
+        </div>
+              {% if filter_estado == 'PUBLICADO' %}
+              <!-- Listado de contenidos publicados para las áreas del usuario -->
+              <div id="published-listing">
+              <div class="level">
+                <div class="level-left">
+                  <h4 class="title is-5">Contenidos publicados</h4>
+                </div>
+                <div class="level-right">
+                  <form method="get" class="field has-addons" style="margin:0;">
+                    <input type="hidden" name="estado" value="PUBLICADO">
+                    <div class="control">
+                      <div class="select is-small">
+                        <select name="area" onchange="this.form.submit()">
+                          <option value="">Todas las áreas</option>
+                          {% if filter_areas %}
+                            {% for a in filter_areas %}
+                              <option value="{{ a.id }}" {% if selected_area and a.id == selected_area %}selected{% endif %}>{{ a.nombre }}</option>
+                            {% endfor %}
+                          {% endif %}
+                        </select>
+                      </div>
+                    </div>
+                    <div class="control">
+                      <button type="submit" class="button is-small">Filtrar</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+              <div id="contenidos-list">
+              {% if contenidos %}
+                <div class="content">
+                  {% for c in contenidos %}
+                    <article class="box">
+                      <div class="columns is-mobile is-vcentered">
+                        <div class="column">
+                          <p class="is-size-6 has-text-weight-semibold">{{ c.titulo }}</p>
+                          <p class="is-size-7 has-text-grey">{{ c.breve_descripcion }}</p>
+                          <p class="is-size-7 mt-2">
+                            <strong>Área Origen:</strong> {% if c.area_origen %}{{ c.area_origen.nombre }}{% else %}General{% endif %}
+                            · <strong>Estado:</strong> {{ c.computed_estado }}
+                            · <strong>Creado:</strong> {{ c.fecha_creacion|date:"d-m-Y H:i" }}
+                            · <strong>Tipo:</strong> {{ c.get_tipo_contenido_display }}
+                            {% if c.display_fecha_limite %}
+                              · <strong>Expira:</strong> {{ c.display_fecha_limite|date:"d-m-Y H:i" }}
+                            {% endif %}
+                          </p>
+                        </div>
+                        <div class="column is-narrow">
+                          <div class="buttons">
+                            {% if c.can_edit %}
+                              <a class="button is-small is-publicar" href="{% url 'contenido_editar' c.id %}">
+                                <span class="icon"><i class="fas fa-edit"></i></span>
+                                <span>Editar</span>
+                              </a>
+                            {% else %}
+                              <button class="button is-small is-publicar" disabled title="No tiene permiso para editar este contenido">
+                                <span class="icon"><i class="fas fa-edit"></i></span>
+                                <span>Editar</span>
+                              </button>
+                            {% endif %}
+                            {% if selected_area %}
+                              {% if c.has_published_for_selected_area %}
+                                {% with areas_list=c.destinatarios.all %}
+                                  {% comment %}Si hay más de un area, el JS abrirá modal; si sólo una, redirige.{% endcomment %}
+                                  <a class="button is-small is-info btn-view-mural" href="#" data-areas-text="{% for ad in areas_list %}{% if ad.estado == 'PUBLICADO' %}{{ ad.area.id }}|{{ ad.area.nombre|escapejs }}{% if not forloop.last %};{% endif %}{% endif %}{% endfor %}" data-default="{% url 'mural_area' selected_area %}">
+                                    <span class="icon"><i class="fas fa-eye"></i></span>
+                                    <span>Ver en el mural</span>
+                                  </a>
+                                {% endwith %}
+                              {% endif %}
+                            {% else %}
+                              {% if c.has_any_published %}
+                                {% with areas_list=c.destinatarios.all %}
+                                  <a class="button is-small is-info btn-view-mural" href="#" data-areas-text="{% for ad in areas_list %}{% if ad.estado == 'PUBLICADO' %}{{ ad.area.id }}|{{ ad.area.nombre|escapejs }}{% if not forloop.last %};{% endif %}{% endif %}{% endfor %}" data-default="{% if c.area_origen %}{% url 'mural_area' c.area_origen.id %}{% else %}{% url 'mural_principal' %}{% endif %}">
+                                    <span class="icon"><i class="fas fa-eye"></i></span>
+                                    <span>Ver en el mural</span>
+                                  </a>
+                                {% endwith %}
+                              {% endif %}
+                            {% endif %}
+                            <button class="button is-small is-danger btn-delete-content" type="button" data-delete-url="{% url 'contenido_eliminar' c.id %}" data-delete-title="{{ c.titulo|escapejs }}"><span class="icon"><i class="fas fa-trash"></i></span></button>
+                          </div>
+                        </div>
+                      </div>
+                    </article>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="notification is-light">No hay contenidos para sus áreas.</div>
+              {% endif %}
+              </div>
+            {% else %}
+            <!-- users-section original movido arriba; eliminada copia duplicada -->
+
+            <!-- Formulario renderizado manualmente para IDs (se muestra sólo cuando no se filtran publicados) -->
+            <form method="POST" enctype="multipart/form-data" id="content-form" action="{% if accion == 'Editar' and contenido %}{% url 'contenido_editar' contenido.id %}{% else %}{% url 'contenido_crear' %}{% endif %}">
+              {% csrf_token %}
+              {% if form.non_field_errors %}
+                <div class="notification is-danger">
+                  {{ form.non_field_errors }}
+                </div>
+              {% endif %}
+              
+              <!-- Título -->
+              <div class="field">
+                <label class="label" for="form-titulo">Título *</label>
+                <div class="control">
+                  {{ form.titulo }}
+                </div>
+                {{ form.titulo.errors }}
+              </div>
+
+              <!-- Descripción Vista Previa (breve_descripcion) -->
+              <div class="field">
+                <label class="label" for="form-desc">Descripción Vista Previa *</label>
+                <div class="control">
+                  {{ form.breve_descripcion }}
+                </div>
+                {{ form.breve_descripcion.errors }}
+              </div>
+
+              <div class="columns form-grid">
+                <!-- Left column: Color arriba, Tipo Contenido abajo -->
+                <div class="column is-half">
+                  <!-- Color de Tarjetas (campo superior izquierdo) -->
+                  <div class="field">
+                    <label class="label" for="form-color">Color de Tarjetas</label>
+                    <div class="control">
+                      <div class="select is-fullwidth">
+                        <select id="form-color" name="color">
+                          <option value="blanco">Por defecto</option>
+                          <option value="verde">Verde Claro</option>
+                          <option value="amarillo">Amarillo Claro</option>
+                          <option value="rojo">Rojo Claro</option>
+                          <option value="azul">Azul Claro</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Tipo Contenido (campo inferior izquierdo) -->
+                  <div class="field" style="margin-top:0.75rem;">
+                    <label class="label" for="form-tipo">Tipo Contenido *</label>
+                    <div class="control">
+                      <div class="select is-fullwidth">
+                        {{ form.tipo_contenido }}
+                      </div>
+                    </div>
+                    {{ form.tipo_contenido.errors }}
+                    <!-- Campo condicional 'Otro' -->
+                    <div id="tipo-otro-wrapper" style="display:none; margin-top:.5rem;">
+                      <input type="text" id="form-tipo-otro" name="tipo_contenido_otro" class="input" placeholder="Especifique el tipo de contenido">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Right column: Fecha Expiración arriba, Fecha Publicación abajo -->
+                <div class="column is-half">
+                  <div class="field" >
+                    <label class="label" for="form-fecha-publicacion">Fecha de Publicación (Opcional)</label>
+                    <div class="control">
+                      {{ form.fecha_publicacion_programada }}
+                    </div>
+                    <p class="help">{{ form.fecha_publicacion_programada.help_text }}</p>
+                    {{ form.fecha_publicacion_programada.errors }}
+                  </div>
+                  <div class="field" style="margin-top:0.75rem;">
+                    <label class="label" for="form-fecha">Fecha de Expiración (Opcional)</label>
+                    <div class="control">
+                      {{ form.fecha_limite }}
+                    </div>
+                    {{ form.fecha_limite.errors }}
+                  </div>
+                </div>
+              </div>
+
+              {# Si es creación, incluir un campo oculto para area_origen con el valor por defecto del usuario #}
+              {# area_origen se asigna automáticamente en el servidor según el usuario que publica #}
+              {% if accion == 'Crear' and default_area_id %}
+                <input type="hidden" name="area_origen" value="{{ default_area_id }}">
+              {% elif accion == 'Editar' and default_area_id %}
+                {# En edición incluimos el area_origen actual para que no se pierda si el formulario se reenvía #}
+                <input type="hidden" name="area_origen" value="{{ default_area_id }}">
+              {% endif %}
+
+              <!-- Contenido Completo -->
+              <div class="field">
+                <label class="label" for="form-contenido">Contenido Completo</label>
+                <div class="control">
+                  {{ form.contenido }}
+                </div>
+                {{ form.contenido.errors }}
+              </div>
+
+              <!-- Selección de Niveles y Destinatarios -->
+              <div class="field">
+                <label class="label">Destinatarios</label>
+                <div class="control">
+                  {% if can_choose_levels %}
+                    <p class="help">Seleccione niveles para publicar a todas las carreras de esos niveles (opcional):</p>
+                    <div class="box" style="padding: .5rem;">
+                      {{ form.niveles_destino }}
+                    </div>
+                    <p class="help">O bien seleccione carreras/áreas específicas:</p>
+                  {% endif %}
+                    <div class="control">
+                        <div class="select is-multiple is-fullwidth">
+                          {{ form.destinatarios }}
+                        </div>
+                        
+                  </div>
+                  {# Usamos un único select `destinatarios`. El queryset lo controla la vista según el usuario. #}
+                </div>
+                {{ form.destinatarios.errors }}
+                
+              </div>
+
+              <!-- Subir Archivo -->
+              <div class="field">
+                <label class="label">Subir Archivo Multimedia (Opcional)</label>
+                <div class="control">
+                  <!-- Contenedor donde se pueden añadir varios inputs -->
+                  <div id="file-inputs">
+                    <div class="file has-name is-fullwidth file-block">
+                      <label class="file-label">
+                        <input class="file-input" type="file" name="archivo_adjunto">
+                        <span class="file-cta">
+                          <span class="file-icon"><i class="fas fa-upload"></i></span>
+                          <span class="file-label">Seleccionar archivo…</span>
+                        </span>
+                        <span class="file-name file-name-display">No file chosen</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div style="margin-top:.5rem; display:flex; gap:.5rem; align-items:center;">
+                    <button type="button" class="button is-small" id="add-file-btn">
+                      <span class="icon"><i class="fas fa-plus"></i></span>
+                      <span>Agregar otro archivo</span>
+                    </button>
+                    <div id="file-errors" style="flex:1"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Botones de Acción -->
+              <hr>
+              <!-- valor por defecto para el campo 'accion' (se sobrescribe por el botón clickeado) -->
+              <input type="hidden" name="accion" id="form-accion" value="borrador">
+
+              <div class="field is-grouped is-grouped-right">
+                <div class="control">
+                  <!-- El 'name' y 'value' controlan la acción solicitada por la UI -->
+                  <button type="submit" name="accion" value="publicar" class="button is-publicar">
+                    <span class="icon"><i class="fas fa-paper-plane"></i></span>
+                    <span>Publicar</span>
+                  </button>
+                </div>
+                <div class="control">
+                  <button type="submit" name="accion" value="borrador" class="button is-light">
+                    <span class="icon"><i class="fas fa-save"></i></span>
+                    <span>Borrador</span>
+                  </button>
+                </div>
+              </div>
+
+            </form>
+            <!-- Perfil de usuario: form alternativo (migrado más abajo para estar siempre disponible) -->
+          </div>
+        </div>
+
+        {% endif %}
+
+        
+
+        <!-- ===== COLUMNA DERECHA: VISTA PREVIA ===== -->
+        {% if filter_estado != 'PUBLICADO' %}
+        <div id="right-column" class="column is-5">
+          <div class="preview-column">
+            <h3 class="title is-4">Vista Previa</h3>
+            
+            <div class="box" id="preview-box">
+              
+              <!-- 1. Estado inicial (se oculta con JS) -->
+              <div id="preview-placeholder">
+                <p class="has-text-grey has-text-centered py-6">
+                  <span class="icon is-large"><i class="fas fa-eye fa-2x"></i></span>
+                </p>
+                <p class="has-text-grey has-text-centered">
+                  Completa el formulario para ver la vista previa.
+                </p>
+              </div>
+
+              <!-- 2. Contenido de la vista previa (oculto por defecto) -->
+              <div id="preview-content" class="is-hidden">
+                
+                <!-- Parte 1: Tarjeta (Como se ve en el mural) -->
+                <h4 class="subtitle is-6 preview-label">Como se verá en el mural</h4>
+
+                <div class="preview-card-wrapper">
+                  <div class="card mural-card mb-4" id="preview-card">
+                    <header class="card-header">
+                      <p class="card-header-title is-size-6" id="preview-card-titulo">Título</p>
+                      <div class="card-header-icon" style="align-items:center;">
+                        <span class="tag is-light is-small" id="preview-card-type"><span class="icon"><i class="fas fa-file"></i></span> <span class="type-label">Tipo</span></span>
+                      </div>
+                    </header>
+                    <div class="card-content modal-bg">
+                      <p class="is-size-7 has-text-grey" id="preview-card-date">Fecha</p>
+                      <p class="mt-2" id="preview-card-desc">Breve descripcion...</p>
+                      <div class="card-attachments" style="display:none;" id="preview-card-attachments"></div>
+                      <div class="card-full-body" style="display:none;" id="preview-card-fullbody"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <hr>
+
+                <!-- Parte 2: Detalle (Como se ve en el modal) -->
+                <p class="mb-2"><span class="modal-badge">Contenido del modal</span></p>
+                <h4 class="title is-5 mt-5" id="preview-full-titulo">Título</h4>
+                
+                <div class="content" id="preview-full-contenido">
+                  <p>Contenido completo...</p>
+                </div>
+                
+                <h5 class="title is-6 mt-4">Archivos</h5>
+                  <!-- Lista de archivos: archivos nuevos seleccionados y archivos existentes (edición) -->
+                  <div id="preview-existing-files" class="mb-3">
+                    {% if contenido and contenido.archivos.exists %}
+                      <p class="is-size-7">Archivos ya adjuntos:</p>
+                      <ul class="ml-4" style="list-style-type: disc;" id="existing-files-list">
+                        {% for a in contenido.archivos.all %}
+                          <li data-preview-url="{{ a.archivo.url }}" data-archivo-id="{{ a.id }}" class="existing-file">
+                            <span class="existing-file-name">{{ a.archivo.name }}</span>
+                            <button type="button" class="button is-small is-danger existing-file-remove" style="margin-left:0.5rem;">Eliminar</button>
+                          </li>
+                        {% endfor %}
+                      </ul>
+                    {% endif %}
+                  </div>
+
+                  <ul id="preview-full-archivos" class="ml-4" style="list-style-type: disc;">
+                    <li class="has-text-grey-light">No hay archivos adjuntos.</li>
+                  </ul>
+
+                  <!-- Contenedor para mostrar preview del primer archivo (existente o recién subido) -->
+                  <div id="preview-file-view" class="mt-3"></div>
+
+              </div>
+
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+      </div> <!-- Fin .columns -->
+    </div>
+  </section>
+
+  <!-- Confirm delete modal (contenidos) -->
+  <div id="confirm-delete-modal" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+      <header class="modal-card-head">
+        <p class="modal-card-title">Confirmar eliminación</p>
+        <button class="delete" aria-label="close" id="confirm-delete-close"></button>
+      </header>
+      <section class="modal-card-body">
+        <p>¿Estás seguro de que deseas eliminar <strong id="confirm-delete-item"></strong> ? Esta acción no se puede deshacer.</p>
+      </section>
+      <footer class="modal-card-foot">
+        <button class="button is-danger" id="confirm-delete-yes">Eliminar</button>
+        <button class="button" id="confirm-delete-no">Cancelar</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Modal para crear/editar usuario -->
+  <div id="user-modal" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+      <header class="modal-card-head">
+        <p class="modal-card-title" id="user-modal-title">Nuevo Usuario</p>
+        <button class="delete" aria-label="close" id="user-modal-close"></button>
+      </header>
+      <section class="modal-card-body">
+        <form id="user-form" method="post" action="{% url 'usuarios_crear' %}">
+          {% csrf_token %}
+          <input type="hidden" name="pk" id="user-pk" value="">
+          <div id="user-form-errors" class="notification is-danger is-light" style="display:none"></div>
+          <div class="field">
+            <label class="label">Nombre</label>
+            <div class="control"><input class="input" name="first_name" id="user-first-name" required></div>
+          </div>
+          <div class="field">
+            <label class="label">Apellido</label>
+            <div class="control"><input class="input" name="last_name" id="user-last-name" required></div>
+          </div>
+          <div class="field">
+            <label class="label">Correo</label>
+            <div class="control"><input class="input" type="email" name="email" id="user-email" required></div>
+          </div>
+          <div class="field">
+            <label class="label">Contraseña</label>
+            <div class="control"><input class="input" type="password" name="password1" id="user-password"></div>
+            <p class="help" id="user-password-help" style="display:none">Dejar en blanco para mantener la contraseña actual al editar.</p>
+          </div>
+          <div class="field">
+            <label class="label">Confirmar Contraseña</label>
+            <div class="control"><input class="input" type="password" name="password2" id="user-password-confirm"></div>
+          </div>
+          <div class="field">
+            <label class="label">Rol</label>
+            <div class="control">
+              <div class="select">
+                <select id="user-role" name="role">
+                  <option value="">-- Seleccione rol --</option>
+                  {% if request.user.is_superuser or request.user.is_staff %}
+                    <option value="Administrador">Administrador</option>
+                    <option value="Jefe de área">Jefe de área</option>
+                  {% endif %}
+                  <option value="Editor de contenido">Editor de contenido</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label class="label">Áreas</label>
+            <div class="control">
+              <select id="user-areas" name="area" multiple>
+                {% for a in all_areas %}
+                  <option value="{{ a.id }}">{{ a.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </form>
+      </section>
+      <footer class="modal-card-foot">
+        <button class="button is-primary" id="user-modal-save">Guardar</button>
+        <button class="button" id="user-modal-cancel">Cancelar</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Modal: Seleccionar área para ver en el mural (si el contenido está en >1 áreas) -->
+  <div id="mural-areas-modal" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+      <header class="modal-card-head">
+        <p class="modal-card-title">Seleccionar área</p>
+        <button class="delete" aria-label="close" id="mural-areas-close"></button>
+      </header>
+      <section class="modal-card-body">
+        <p class="mb-3">Este contenido está publicado en varias áreas. Seleccione el área cuyo mural desea ver:</p>
+        <div id="mural-areas-list" class="buttons is-flex-wrap-wrap"></div>
+      </section>
+      <footer class="modal-card-foot">
+        <button class="button" id="mural-areas-cancel">Cerrar</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Hidden form used to submit delete POST with CSRF -->
+  <form id="confirm-delete-form" method="post" style="display:none">{% csrf_token %}</form>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // --- Seleccionar elementos ---
+      const form = document.getElementById('content-form');
+      const tituloInput = document.getElementById('form-titulo');
+      const descInput = document.getElementById('form-desc');
+      const tipoInput = document.getElementById('form-tipo');
+      const tipoOtroInput = document.getElementById('form-tipo-otro');
+      const fechaInput = document.getElementById('form-fecha');
+      const areaInput = document.getElementById('form-area');
+      const colorInput = document.getElementById('form-color');
+      const contenidoInput = document.getElementById('form-contenido');
+      const initialContentDataEl = document.getElementById('initial-contenido-data');
+      const initialColorValue = initialContentDataEl ? (initialContentDataEl.dataset.color || '') : '';
+
+      // Toggle del menú responsive (burger) para mostrar saludo / cerrar sesión en móviles
+      try {
+        const burger = document.querySelector('.navbar-burger');
+        if (burger) {
+          const targetId = burger.dataset.target;
+          const targetEl = document.getElementById(targetId);
+          burger.addEventListener('click', () => {
+            burger.classList.toggle('is-active');
+            if (targetEl) targetEl.classList.toggle('is-active');
+          });
+        }
+      } catch (e) {
+        // no fatal
+      }
+
+      // parámetros de validación embebidos por el servidor
+      const allowedExtensions = (function(){ try { return JSON.parse(document.getElementById('allowedExt').textContent); } catch(e){ return []; } })();
+      const maxSizeMb = (function(){ try { return JSON.parse(document.getElementById('maxSizeMb').textContent); } catch(e){ return 20; } })();
+      const sizeByType = (function(){ try { return JSON.parse(document.getElementById('sizeByType').textContent || '{}'); } catch(e){ return {}; } })();
+
+      // inputs y UI de archivos
+      const fileInputsContainer = document.getElementById('file-inputs');
+      const addFileBtn = document.getElementById('add-file-btn');
+      const fileErrorsContainer = document.getElementById('file-errors');
+
+      // vista previa
+      const placeholder = document.getElementById('preview-placeholder');
+      const previewContent = document.getElementById('preview-content');
+      const card = document.getElementById('preview-card');
+      const cardTitulo = document.getElementById('preview-card-titulo');
+      const cardDate = document.getElementById('preview-card-date');
+      const cardDesc = document.getElementById('preview-card-desc');
+      const cardType = document.getElementById('preview-card-type');
+      const cardAttachments = document.getElementById('preview-card-attachments');
+      const cardFullBody = document.getElementById('preview-card-fullbody');
+      const fullTitulo = document.getElementById('preview-full-titulo');
+      const fullContenido = document.getElementById('preview-full-contenido');
+      const fullArchivos = document.getElementById('preview-full-archivos');
+      const existingFilesList = document.getElementById('existing-files-list');
+      const previewFileView = document.getElementById('preview-file-view');
+
+      // helpers: obtener todos los inputs actuales
+      const acceptStr = (Array.isArray(allowedExtensions) && allowedExtensions.length>0) ? allowedExtensions.map(e => `.${e}`).join(',') : '';
+
+      function getFileInputs() {
+        if (!fileInputsContainer) return [];
+        return Array.from(fileInputsContainer.querySelectorAll('input[name="archivo_adjunto"]'));
+      }
+
+      function getAllSelectedFiles() {
+        const inputs = getFileInputs();
+        const files = [];
+        for (const input of inputs) {
+          for (const f of input.files) files.push(f);
+        }
+        return files;
+      }
+
+      function detectCategoryFromFile(file) {
+        const name = (file.name || '').toLowerCase();
+        const ext = name.split('.').pop();
+        const ctype = (file.type || '').toLowerCase();
+        if (ctype.startsWith('image/') || ['jpg','jpeg','png','gif','webp'].includes(ext)) return 'image';
+        if (ctype.startsWith('video/') || ['mp4','webm','mov','avi'].includes(ext)) return 'video';
+        if (ctype.startsWith('audio/') || ['mp3','wav','ogg'].includes(ext)) return 'audio';
+        if (ext === 'pdf' || ['doc','docx','xls','xlsx','ppt','pptx','txt','csv'].includes(ext)) return 'document';
+        return null;
+      }
+
+      function validateFiles(files) {
+        const errors = [];
+        files.forEach((file, idx) => {
+          const name = file.name || (`archivo_${idx}`);
+          const parts = name.split('.');
+          const ext = parts.length>1 ? parts.pop().toLowerCase() : '';
+
+          // extensión
+          if (Array.isArray(allowedExtensions) && allowedExtensions.length > 0) {
+            if (!ext || !allowedExtensions.includes(ext)) {
+              errors.push(`Extensión no permitida: ${name}`);
+              return;
+            }
+          }
+
+          // tamaño
+          const category = detectCategoryFromFile(file);
+          const maxMbForFile = (category && sizeByType && sizeByType[category]) ? sizeByType[category] : maxSizeMb;
+          if (file.size && maxMbForFile && file.size > maxMbForFile * 1024 * 1024) {
+            errors.push(`${name} demasiado grande (${(file.size/1024/1024).toFixed(2)} MB). Máximo: ${maxMbForFile} MB`);
+          }
+        });
+        return errors;
+      }
+
+      function renderFileErrors(errors) {
+        fileErrorsContainer.innerHTML = '';
+        if (!errors || errors.length===0) return;
+        const box = document.createElement('div');
+        box.className = 'notification is-danger is-light';
+        const ul = document.createElement('ul');
+        errors.forEach(e => {
+          const li = document.createElement('li'); li.textContent = e; ul.appendChild(li);
+        });
+        box.appendChild(ul);
+        fileErrorsContainer.appendChild(box);
+      }
+
+      // crear nuevo bloque de input file
+      function createFileInputBlock() {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'file has-name is-fullwidth file-block';
+        const label = document.createElement('label'); label.className = 'file-label';
+
+        const input = document.createElement('input');
+        input.type = 'file'; input.name = 'archivo_adjunto'; input.className = 'file-input';
+        if (acceptStr) input.setAttribute('accept', acceptStr);
+
+        const cta = document.createElement('span'); cta.className = 'file-cta';
+        cta.innerHTML = '<span class="file-icon"><i class="fas fa-upload"></i></span><span class="file-label">Seleccionar archivo…</span>';
+
+        const fname = document.createElement('span'); fname.className = 'file-name file-name-display'; fname.textContent = 'No file chosen';
+
+        // botón remover
+        const rem = document.createElement('button'); rem.type = 'button'; rem.className = 'button is-small is-danger'; rem.style.marginLeft = '0.5rem'; rem.innerHTML = '<span class="icon"><i class="fas fa-trash"></i></span>';
+        rem.addEventListener('click', () => { wrapper.remove(); updatePreview(); });
+
+        input.addEventListener('change', () => {
+          if (input.files && input.files.length>0) {
+            fname.textContent = input.files.length>1 ? `${input.files.length} archivos` : input.files[0].name;
+          } else { fname.textContent = 'No file chosen'; }
+          updatePreview();
+        });
+
+        label.appendChild(input);
+        label.appendChild(cta);
+        label.appendChild(fname);
+        wrapper.appendChild(label);
+        wrapper.appendChild(rem);
+        return wrapper;
+      }
+
+      // inicial: convertir el primer bloque para que responda
+      (function attachInitialListeners(){
+        const firstInputs = getFileInputs();
+        if (firstInputs.length>0) {
+          const first = firstInputs[0];
+          if (acceptStr) first.setAttribute('accept', acceptStr);
+          const fname = first.closest('.file-block')?.querySelector('.file-name-display');
+          first.addEventListener('change', ()=>{
+            if (first.files && first.files.length>0) {
+              if (fname) fname.textContent = first.files.length>1 ? `${first.files.length} archivos` : first.files[0].name;
+            } else if (fname) {
+              fname.textContent = 'No file chosen';
+            }
+            updatePreview();
+          });
+        }
+      })();
+
+      // añadir nuevo input al hacer click
+      if (addFileBtn) {
+        addFileBtn.addEventListener('click', (e)=>{
+          const block = createFileInputBlock();
+          fileInputsContainer.appendChild(block);
+        });
+      }
+
+      // Funciones de preview (reutilizan la lógica previa)
+      function updatePreview() {
+        // Si la vista previa no está en el DOM (por ejemplo en la vista PUBLICADO), salir
+        if (!placeholder || !previewContent) return;
+
+        const titulo = tituloInput ? tituloInput.value.trim() : '';
+        const desc = descInput ? descInput.value.trim() : '';
+        const contenido = contenidoInput ? contenidoInput.value.trim() : '';
+        const areaText = (areaInput && areaInput.options && areaInput.selectedIndex>=0) ? areaInput.options[areaInput.selectedIndex].text : '';
+        const colorValue = (colorInput && colorInput.value) ? colorInput.value : (initialColorValue || 'default');
+        const files = getAllSelectedFiles();
+
+        let existingUrls = [];
+        if (existingFilesList) {
+          // ignore files marked for removal (have class 'marked-for-remove')
+          existingUrls = Array.from(existingFilesList.querySelectorAll('.existing-file')).filter(li => !li.classList.contains('marked-for-remove')).map(li => li.dataset.previewUrl).filter(Boolean);
+        }
+
+        const hasContent = titulo || desc || contenido;
+        if (hasContent) {
+          placeholder.classList.add('is-hidden');
+          previewContent.classList.remove('is-hidden');
+        } else {
+          placeholder.classList.remove('is-hidden');
+          previewContent.classList.add('is-hidden');
+          return;
+        }
+
+        // tarjeta
+        cardTitulo.textContent = titulo || 'Título';
+        // fecha: usar formato similar al mural (ej. '29 de noviembre')
+        try{
+          const now = new Date();
+          const parts = now.toLocaleDateString('es-ES', { day: '2-digit', month: 'long' });
+          cardDate.textContent = parts || '';
+        } catch(e){ if(cardDate) cardDate.textContent = ''; }
+        // Tipo para la vista previa: si se seleccionó 'OTRO' usar el texto especificado
+        try {
+          const tipoText = (function(){
+            if (!tipoInput) return '';
+            if (tipoInput.value === 'OTRO') {
+              return tipoOtroInput ? (tipoOtroInput.value || '').trim() : '';
+            }
+            return (tipoInput.options && tipoInput.selectedIndex>=0) ? tipoInput.options[tipoInput.selectedIndex].text : (tipoInput.value || '');
+          })();
+          if (cardType) {
+            // cardType contains an icon span + type-label
+            const label = cardType.querySelector('.type-label');
+            if (label) label.textContent = tipoText || 'Tipo';
+            // Normalizar clases para evitar que se hereden estilos de color (ej. rojo)
+            try{
+              ['is-danger','is-success','is-primary','is-warning','is-info','is-dark'].forEach(c => cardType.classList.remove(c));
+              if (!cardType.classList.contains('is-light')) cardType.classList.add('is-light');
+            }catch(ex){/* noop */}
+          }
+        } catch (e) { /* noop */ }
+        cardDesc.textContent = desc || 'Breve descripcion...';
+        // Mantener clases y aplicar color map if required
+        card.className = 'card mural-card mb-4';
+        const colorMap = {
+          'verde': 'rgba(40,167,69,0.25)',
+          'amarillo': 'rgba(255,193,7,0.25)',
+          'rojo': 'rgba(220,53,69,0.25)',
+          'azul': 'rgba(23,162,184,0.25)',
+          'blanco': 'transparent',
+          'default': 'transparent'
+        };
+        card.style.backgroundColor = colorMap[colorValue] || colorMap['default'];
+
+        fullTitulo.textContent = titulo || 'Título';
+        // Mantener el cuerpo oculto de la card para consistencia con mural
+        if (cardFullBody) cardFullBody.innerHTML = contenido.replace(/\n/g, '<br>') || '';
+        fullContenido.innerHTML = contenido.replace(/\n/g, '<br>') || '<p class="has-text-grey-light">Contenido completo...</p>';
+
+        // lista de archivos
+        fullArchivos.innerHTML = '';
+        if (files.length>0) {
+          for (const file of files) {
+            const li = document.createElement('li'); li.textContent = file.name; fullArchivos.appendChild(li);
+          }
+          showPreviewFromFileList(files);
+        } else {
+          fullArchivos.innerHTML = '<li class="has-text-grey-light">No hay archivos adjuntos.</li>';
+          if (existingUrls && existingUrls.length) {
+            showPreviewFromUrl(existingUrls[0]);
+          } else { previewFileView.innerHTML = ''; }
+        }
+      }
+
+      function showPreviewFromUrl(url) {
+        if (!previewFileView) return;
+        const lower = url.split('?')[0].toLowerCase();
+        if (lower.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
+          previewFileView.innerHTML = `<img src="${url}" style="max-width:100%; max-height:320px; display:block; margin:0 auto;" />`;
+          return;
+        }
+        if (lower.match(/\.pdf$/)) {
+          previewFileView.innerHTML = `<embed src="${url}" type="application/pdf" style="width:100%; height:420px; border:0;" />`;
+          return;
+        }
+        previewFileView.innerHTML = `<p class="is-size-7 has-text-grey">No se puede previsualizar: <a href="${url}">Descargar</a></p>`;
+      }
+
+      function showPreviewFromUrlList(urls) {
+        if (!previewFileView) return;
+        if (!urls || urls.length === 0) { previewFileView.innerHTML = ''; return; }
+        const parts = [];
+        const seen = new Set();
+        urls.forEach(u => {
+          try{
+            const raw = u.split('?')[0];
+            const name = (raw.split('/').pop() || '').toLowerCase();
+            if (seen.has(name)) return; // evitar duplicados
+            seen.add(name);
+            const lower = raw.toLowerCase();
+            if (lower.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
+              parts.push(`<div style="margin-bottom:.5rem;"><img src="${u}" style="max-width:100%; max-height:220px; display:block; margin:0 auto;" /></div>`);
+            } else if (lower.match(/\.pdf$/)) {
+              parts.push(`<div style="margin-bottom:.5rem;"><a href="${u}" target="_blank">Ver PDF</a></div>`);
+            } else {
+              parts.push(`<div style="margin-bottom:.25rem;"><a href="${u}" target="_blank">${name}</a></div>`);
+            }
+          }catch(e){}
+        });
+        previewFileView.innerHTML = parts.join('');
+      }
+
+      function showPreviewFromFileList(fileList) {
+        if (!previewFileView) return;
+        if (!fileList || fileList.length === 0) { previewFileView.innerHTML = ''; return; }
+        // mostrar miniaturas/links para todos los archivos seleccionados
+        const parts = [];
+        const objectUrls = [];
+        const seen = new Set();
+        fileList.forEach(f => {
+          try{
+            const fname = (f.name || '').toLowerCase();
+            if (seen.has(fname)) return; // evitar duplicados
+            seen.add(fname);
+            const type = (f.type || '').toLowerCase();
+            if (type.startsWith('image/')) {
+              const url = URL.createObjectURL(f);
+              objectUrls.push(url);
+              parts.push(`<div style="margin-bottom:.5rem;"><img src="${url}" style="max-width:100%; max-height:220px; display:block; margin:0 auto;" /></div>`);
+            } else if (type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')) {
+              const url = URL.createObjectURL(f);
+              objectUrls.push(url);
+              parts.push(`<div style="margin-bottom:.5rem;"><a href="${url}" target="_blank">Ver PDF: ${f.name}</a></div>`);
+            } else {
+              parts.push(`<div style="margin-bottom:.25rem;">${f.name}</div>`);
+            }
+          }catch(e){}
+        });
+        previewFileView.innerHTML = parts.join('');
+        // revocar object URLs después de un rato para liberar memoria
+        setTimeout(()=>{ objectUrls.forEach(u=>{ try{ URL.revokeObjectURL(u); }catch(e){} }); }, 2500);
+      }
+
+      // escuchar cambios en inputs clave (incluye campo 'OTRO' y usa 'input' para respuestas en tiempo real)
+      const inputsToListen = [];
+      [tituloInput, descInput, tipoInput, tipoOtroInput, fechaInput, areaInput, colorInput, contenidoInput].forEach(i=>{ if(i) inputsToListen.push(i); });
+      inputsToListen.forEach(input => {
+        try{
+          input.addEventListener('input', updatePreview);
+          input.addEventListener('change', updatePreview);
+        }catch(e){}
+      });
+
+      // validar al enviar (proteger si el formulario no está presente)
+      if (form) {
+        form.addEventListener('submit', (e) => {
+          // Ensure the hidden 'accion' reflects the actual submit button used (modern browsers expose e.submitter)
+          try{
+            const hiddenAct = document.getElementById('form-accion');
+            if (e && e.submitter && e.submitter.name === 'accion' && e.submitter.value) {
+              if (hiddenAct) hiddenAct.value = e.submitter.value;
+            }
+          }catch(err){}
+          // Sincronizar selects múltiples (niveles/destinatarios) asegurando valores enviados
+          try {
+            Array.from(form.querySelectorAll('input._hidden_multi_val')).forEach(n => n.remove());
+            const multiSelects = Array.from(form.querySelectorAll('select[multiple]'));
+            multiSelects.forEach(sel => {
+              const name = sel.name;
+              if (!name) return;
+              const selected = Array.from(sel.options).filter(o => o.selected).map(o => o.value).filter(v => v!=='');
+              if (selected.length === 0) {
+                const checkboxes = Array.from(form.querySelectorAll('input[type="checkbox"][name="' + name + '"]'));
+                if (checkboxes && checkboxes.length>0) {
+                  checkboxes.filter(cb => cb.checked).forEach(cb => selected.push(cb.value));
+                }
+              }
+              selected.forEach(v => {
+                const h = document.createElement('input');
+                h.type = 'hidden';
+                h.name = name;
+                h.value = v;
+                h.className = '_hidden_multi_val';
+                form.appendChild(h);
+              });
+            });
+          } catch (ex) {
+            console.error('pre-submit multi-select sync failed', ex);
+          }
+
+          const files = getAllSelectedFiles();
+          const errors = validateFiles(files);
+          if (errors.length>0) {
+            e.preventDefault();
+            renderFileErrors(errors);
+            // mostrar preview también para ayudar al usuario
+            updatePreview();
+            try { window.scrollTo({ top: fileErrorsContainer.getBoundingClientRect().top + window.scrollY - 80, behavior: 'smooth' }); } catch(ex) {}
+          }
+        });
+      }
+
+      // --- Función para mostrar paneles independientes ---
+      function showPanel(name){
+        // Panels: 'create' (form+preview), 'list' (published list / contents), 'profile', 'users'
+        const left = document.getElementById('left-column');
+        const right = document.getElementById('right-column');
+        // hide all specific sections first
+        try{ if(contentForm) contentForm.style.display = 'none'; } catch(e){}
+        try{ if(publishedListing) publishedListing.style.display = 'none'; } catch(e){}
+        try{ if(profilePanel) profilePanel.classList.add('is-hidden'); } catch(e){}
+        try{ if(usersSection) usersSection.classList.add('is-hidden'); } catch(e){}
+        // reset classes
+        try{ if(left) left.className = left.className.replace(/\bis-12\b|\bis-7\b/g, '').trim(); } catch(e){}
+        if(name === 'create'){
+          // show form and preview side-by-side
+          try{ if(left) left.className = 'column is-7'; } catch(e){}
+          try{ if(right) right.style.display = ''; } catch(e){}
+          try{ if(contentForm) contentForm.style.display = ''; } catch(e){}
+        } else if(name === 'list'){
+          // expand left to full width and show listing
+          try{ if(left) left.className = 'column is-12'; } catch(e){}
+          try{ if(right) right.style.display = 'none'; } catch(e){}
+          try{ if(publishedListing) publishedListing.style.display = ''; } catch(e){}
+        } else if(name === 'profile'){
+          try{ if(left) left.className = 'column is-12'; } catch(e){}
+          try{ if(right) right.style.display = 'none'; } catch(e){}
+          try{ if(profilePanel) profilePanel.classList.remove('is-hidden'); } catch(e){}
+        } else if(name === 'users'){
+          try{ if(left) left.className = 'column is-12'; } catch(e){}
+          try{ if(right) right.style.display = 'none'; } catch(e){}
+          try{ if(usersSection) usersSection.classList.remove('is-hidden'); } catch(e){}
+        }
+      }
+
+      // Ocultar panel de perfil y volver a la vista de creación
+      function hideProfilePanel(){
+        try{ setActiveBtn(btnCrear); } catch(e){}
+        try{ showPanel('create'); } catch(e){}
+      }
+
+      // --- Botones de acción: marcar activo en verde oscuro al seleccionar ---
+      const btnCrear = document.getElementById('btn-crear-editar');
+      const btnContenido = document.getElementById('btn-contenido-publicado');
+      const btnMiPerfil = document.getElementById('btn-mi-perfil');
+      const btnGestUsuarios = document.getElementById('btn-gest-usuarios');
+      function setActiveBtn(btn){
+        // limpiar estado activo de todos los botones principales (Crear, Publicado, Mi Perfil, Gestionar Usuarios)
+        [btnCrear, btnContenido, btnMiPerfil, btnGestUsuarios].forEach(x => { if(x) x.classList.remove('is-active-green'); });
+        if (btn) btn.classList.add('is-active-green');
+      }
+      if (btnCrear) btnCrear.addEventListener('click', (e)=>{ 
+        e.preventDefault();
+        // Si el formulario no está presente (p. ej. estamos en ?estado=PUBLICADO),
+        // forzamos una recarga completa para que el servidor entregue la rama con el formulario.
+        if (!contentForm) {
+          window.location.href = baseGestUrl + '#content-form';
+          return;
+        }
+        // Mostrar panel de crear/editar sin recargar y actualizar el hash
+        setActiveBtn(btnCrear);
+        try { history.replaceState(null, '', baseGestUrl + '#content-form'); } catch(e) {}
+        showPanel('create');
+      });
+      if (btnContenido) btnContenido.addEventListener('click', (e)=>{ 
+        e.preventDefault();
+        // Forzar recarga a la rama server-side que incluye el listado publicado
+        // agregamos #list para que, al cargarse, el JS abra el panel adecuado
+        window.location.href = baseGestUrl + '?estado=PUBLICADO#list';
+      });
+      // estado inicial: seleccionar panel según hash o botón activo
+      if (location && location.hash) {
+        const h = location.hash;
+        if (h === '#content-form' && btnCrear) {
+          setActiveBtn(btnCrear);
+          showPanel('create');
+        } else if (h === '#users' && btnGestUsuarios) {
+          // Si el servidor no incluyó la sección, recargar al baseGestUrl para forzar render
+          if (!usersSection) {
+            window.location.href = baseGestUrl + '#users';
+          } else {
+            setActiveBtn(btnGestUsuarios);
+            showPanel('users');
+          }
+        } else if (h === '#profile' && btnMiPerfil) {
+          setActiveBtn(btnMiPerfil);
+          showPanel('profile');
+        } else if (h === '#list' && btnContenido) {
+          setActiveBtn(btnContenido);
+          showPanel('list');
+        } else {
+          if (btnCrear) { setActiveBtn(btnCrear); showPanel('create'); }
+        }
+      } else if (btnContenido && btnContenido.classList.contains('is-active-green')){
+        setActiveBtn(btnContenido);
+        showPanel('list');
+      } else {
+        // por defecto mostrar crear/editar
+        if(btnCrear) setActiveBtn(btnCrear);
+        showPanel('create');
+      }
+
+      // Mostrar/ocultar input 'Otro' para tipo_contenido
+      const tipoSelect = document.getElementById('form-tipo');
+      const tipoOtroWrapper = document.getElementById('tipo-otro-wrapper');
+      function handleTipoOtro(){
+        try{
+          const val = tipoSelect ? tipoSelect.value : '';
+          if(val === 'OTRO'){
+            if(tipoOtroWrapper) { tipoOtroWrapper.style.display = 'block'; }
+            // Quitar marcas de error visuales si existen
+            try{ if(tipoOtroInput){ tipoOtroInput.classList.remove('is-danger'); tipoOtroInput.removeAttribute('aria-invalid'); tipoOtroInput.style.boxShadow=''; tipoOtroInput.style.borderColor=''; } }catch(e){}
+          } else {
+            if(tipoOtroWrapper) tipoOtroWrapper.style.display = 'none';
+            if(tipoOtroInput) { tipoOtroInput.value = ''; try{ tipoOtroInput.classList.remove('is-danger'); tipoOtroInput.removeAttribute('aria-invalid'); }catch(e){} }
+          }
+        }catch(e){ }
+      }
+      if(tipoSelect) tipoSelect.addEventListener('change', handleTipoOtro);
+      // inicializar estado del campo
+      handleTipoOtro();
+
+      // --- Mi Perfil / Usuarios helpers ---
+      const contentForm = document.getElementById('content-form');
+      const profilePanel = document.getElementById('profile-panel');
+      const profileForm = document.getElementById('profile-form');
+      const profileCancel = document.getElementById('profile-cancel');
+      const previewColumn = document.querySelector('.preview-column');
+      const previewColumnContainer = previewColumn ? previewColumn.closest('.column') : null;
+      const publishedListing = document.getElementById('published-listing');
+      const usersSection = document.getElementById('users-section');
+
+      // Note: `btnMiPerfil` and `btnGestUsuarios` are declared earlier to avoid TDZ issues
+
+      // Modal elements
+      const userModal = document.getElementById('user-modal');
+      const userModalClose = document.getElementById('user-modal-close');
+      const userModalCancel = document.getElementById('user-modal-cancel');
+      const userModalSave = document.getElementById('user-modal-save');
+      const userForm = document.getElementById('user-form');
+      const userPk = document.getElementById('user-pk');
+      const userAreasSelect = document.getElementById('user-areas');
+      let userAreasChoices = null;
+      // Flags from server about current user's privileges (leídas desde un bloque JSON seguro)
+      const _userFlagsEl = document.getElementById('current-user-flags');
+      const _userFlags = (function(){ try{ return JSON.parse(_userFlagsEl ? _userFlagsEl.textContent : '{}'); }catch(e){ return {}; } })();
+      const currentIsSuper = !!_userFlags.is_super;
+      const currentIsStaff = !!_userFlags.is_staff;
+      // Base URL for this panel (used to force reload into a different server-side branch)
+      const baseGestUrl = '{% url "contenidos_mis_areas" %}';
+      const baseMuralAreaUrl = '{% url "mural_area" 0 %}';
+
+      // Mi Perfil button: show profile panel
+      if (btnMiPerfil) {
+        btnMiPerfil.addEventListener('click', (e) => {
+          e.preventDefault();
+          setActiveBtn(btnMiPerfil);
+          showPanel('profile');
+        });
+      }
+
+      // Gestionar Usuarios button: show users panel
+      if (btnGestUsuarios) {
+        btnGestUsuarios.addEventListener('click', (e) => {
+          // Prevenir la navegación por defecto del enlace para evitar recargas no deseadas
+          e.preventDefault();
+          // Si la sección de usuarios no está presente (p. ej. estamos en ?estado=PUBLICADO),
+          // forzamos recarga al URL base con hash para que el servidor renderice la sección.
+          if (!usersSection) {
+            window.location.href = baseGestUrl + '#users';
+            return;
+          }
+          setActiveBtn(btnGestUsuarios);
+          showPanel('users');
+        });
+      }
+
+      // Modal handlers for user creation/edit
+      function openUserModal(mode, data){
+        if(!userModal) return;
+        // mode: 'new' | 'edit'
+        document.getElementById('user-modal-title').textContent = mode === 'new' ? 'Nuevo Usuario' : 'Editar Usuario';
+        if(mode === 'new'){
+          userForm.action = '{% url "usuarios_crear" %}';
+          userPk.value = '';
+          userForm.querySelector('#user-first-name').value = '';
+          userForm.querySelector('#user-last-name').value = '';
+          userForm.querySelector('#user-email').value = '';
+          try{ userForm.querySelector('#user-password').value = ''; } catch(e){}
+          // reset choices
+          if(userAreasChoices) userAreasChoices.removeActiveItems();
+          // reset role select: if current user is not admin/staff, default to Editor
+          try{
+            const roleEl = userForm.querySelector('#user-role');
+            if(roleEl){
+              if(!(currentIsSuper || currentIsStaff)){
+                roleEl.value = 'Editor de contenido';
+              } else {
+                roleEl.value = '';
+              }
+            }
+          }catch(e){}
+          // hide the edit-only help text
+          try{ document.getElementById('user-password-help').style.display = 'none'; } catch(e){}
+        } else if(mode === 'edit' && data){
+          userForm.action = '{% url "usuarios_editar" 0 %}'.replace('/0/', '/' + data.id + '/');
+          userPk.value = data.id || '';
+          userForm.querySelector('#user-first-name').value = data.first_name || '';
+          userForm.querySelector('#user-last-name').value = data.last_name || '';
+          userForm.querySelector('#user-email').value = data.email || '';
+          try{ userForm.querySelector('#user-password').value = ''; } catch(e){}
+          // set choices selection
+          if(userAreasChoices){
+            try{
+              userAreasChoices.removeActiveItems();
+              (data.areas || []).forEach(aid => {
+                userAreasChoices.setChoiceByValue(String(aid));
+              });
+            }catch(e){}
+          }
+          // set role select if provided
+          try{
+            const roleEl = userForm.querySelector('#user-role');
+            if(roleEl){ roleEl.value = data.role || ''; }
+          }catch(e){}
+          // show the edit-only help text
+          try{ document.getElementById('user-password-help').style.display = ''; } catch(e){}
+        }
+        userModal.classList.add('is-active');
+      }
+
+      function closeUserModal(){ if(userModal) userModal.classList.remove('is-active'); }
+
+      if(userModalClose) userModalClose.addEventListener('click', closeUserModal);
+      if(userModalCancel) userModalCancel.addEventListener('click', closeUserModal);
+      // Client-side validation for user modal
+      function validateUserForm(){
+        const errors = [];
+        const first = (userForm.querySelector('#user-first-name')||{value:''}).value.trim();
+        const last = (userForm.querySelector('#user-last-name')||{value:''}).value.trim();
+        const email = (userForm.querySelector('#user-email')||{value:''}).value.trim();
+        const roleEl = userForm.querySelector('#user-role');
+        // Collect selected areas from the select (works with Choices or native select)
+        let areasSelected = [];
+        try{ if(userAreasSelect){ areasSelected = Array.from(userAreasSelect.options).filter(o=>o.selected).map(o=>o.value); } }catch(e){}
+
+        // password fields
+        const passwordEl = userForm.querySelector('#user-password');
+        const passwordConfirmEl = userForm.querySelector('#user-password-confirm');
+        const password = passwordEl ? (passwordEl.value||'') : '';
+        const passwordConfirm = passwordConfirmEl ? (passwordConfirmEl.value||'') : '';
+        const isEdit = !!(userForm.querySelector('#user-pk') && userForm.querySelector('#user-pk').value);
+
+        if(!first) errors.push('Nombre es obligatorio.');
+        if(!last) errors.push('Apellido es obligatorio.');
+        if(!email) errors.push('Correo es obligatorio.');
+        else {
+          // simple email regex
+          const re = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+          if(!re.test(email)) errors.push('Correo no tiene un formato válido.');
+        }
+        if(!areasSelected || areasSelected.length === 0) errors.push('Seleccione al menos un área.');
+
+        // Password rules: for new user password is required; if provided, must match confirmation
+        if(!isEdit){
+          if(!password) errors.push('Contraseña es obligatoria para nuevo usuario.');
+        }
+        if(password || passwordConfirm){
+          if(password !== passwordConfirm) errors.push('Las contraseñas no coinciden.');
+        }
+
+        const errorsDiv = document.getElementById('user-form-errors');
+        if(errors.length>0){
+          if(errorsDiv){
+            errorsDiv.style.display = '';
+            errorsDiv.innerHTML = '<ul>' + errors.map(e=>'<li>'+e+'</li>').join('') + '</ul>';
+          } else {
+            alert(errors.join('\n'));
+          }
+          return false;
+        }
+        if(errorsDiv){ errorsDiv.style.display = 'none'; errorsDiv.innerHTML = ''; }
+        return true;
+      }
+
+      if(userModalSave) userModalSave.addEventListener('click', (e)=>{ 
+        e.preventDefault();
+        try{
+          if(validateUserForm()){
+            userForm.submit();
+          }
+        }catch(ex){
+          try{ closeUserModal(); }catch(_){ }
+        }
+      });
+
+      // --- Modal para seleccionar área al ver en el mural ---
+      const muralAreasModal = document.getElementById('mural-areas-modal');
+      const muralAreasList = document.getElementById('mural-areas-list');
+      const muralAreasClose = document.getElementById('mural-areas-close');
+      const muralAreasCancel = document.getElementById('mural-areas-cancel');
+      function openMuralAreasModal(areas, defaultUrl){
+        if(!muralAreasModal || !muralAreasList) return;
+        muralAreasList.innerHTML = '';
+        areas.forEach(a => {
+          const btn = document.createElement('button');
+          btn.className = 'button is-light is-fullwidth';
+          btn.style.marginBottom = '0.4rem';
+          btn.textContent = a.name || ('Área ' + a.id);
+          btn.addEventListener('click', ()=>{
+            try{
+              // construir URL a mural_area reemplazando el id 0
+              const base = defaultUrl || '';
+              if(base && base.indexOf('/0/')!==-1){
+                const url = base.replace('/0/', '/' + a.id + '/');
+                window.location.href = url;
+              } else if (base) {
+                // fallback: si defaultUrl no tiene /0/ asumimos que es mural_principal u otro
+                window.location.href = base + (base.endsWith('/') ? '' : '/') + a.id + '/';
+              }
+            }catch(e){ window.location.href = defaultUrl; }
+          });
+          muralAreasList.appendChild(btn);
+        });
+        muralAreasModal.classList.add('is-active');
+      }
+      function closeMuralAreasModal(){ if(muralAreasModal) muralAreasModal.classList.remove('is-active'); }
+      if(muralAreasClose) muralAreasClose.addEventListener('click', closeMuralAreasModal);
+      if(muralAreasCancel) muralAreasCancel.addEventListener('click', closeMuralAreasModal);
+
+      // Handler nombrado para 'Ver en el mural' (evita crear closures múltiples y permite removeEventListener)
+      function handleViewMuralClick(e){
+        // Ignore synthetic events (dispatched programmatically) to avoid recursion
+        if (e && typeof e.isTrusted !== 'undefined' && !e.isTrusted) return;
+        try{ e.preventDefault(); }catch(_){ }
+        // Guard to prevent re-entrancy on same element
+        try{
+          const selfEl = (this && this.setAttribute) ? this : (e && e.currentTarget) ? e.currentTarget : null;
+          if(selfEl && selfEl.dataset && selfEl.dataset._handling === '1') return;
+          if(selfEl && selfEl.dataset) selfEl.dataset._handling = '1';
+          // ensure we clear the flag after a short tick
+          setTimeout(()=>{ try{ if(selfEl && selfEl.dataset) delete selfEl.dataset._handling; }catch(_){ } }, 1000);
+        }catch(_){}
+        const btn = (this && this.getAttribute) ? this : (e && e.currentTarget) ? e.currentTarget : null;
+        if(!btn) return;
+        // support both JSON `data-areas` (old) and semicolon-separated `data-areas-text`
+        const areasText = btn.getAttribute('data-areas-text');
+        let areas = [];
+        if (areasText && areasText.length>0) {
+          areas = areasText.split(';').map(s => {
+            const parts = s.split('|');
+            return { id: (parts[0]||'').trim(), name: (parts[1]||'').trim() };
+          }).filter(a => a.id);
+        } else {
+          const areasJson = btn.getAttribute('data-areas') || '[]';
+          try{ areas = JSON.parse(areasJson); }catch(ex){ areas = []; }
+        }
+        const defaultUrl = btn.getAttribute('data-default') || '';
+        if (!areas || areas.length === 0) {
+          if (defaultUrl) window.location.href = defaultUrl;
+          return;
+        }
+        if (areas.length === 1) {
+          const a = areas[0];
+          if (defaultUrl && defaultUrl.indexOf('/0/')!==-1) {
+            window.location.href = defaultUrl.replace('/0/', '/' + a.id + '/');
+          } else if (baseMuralAreaUrl && baseMuralAreaUrl.indexOf('/0/')!==-1) {
+            window.location.href = baseMuralAreaUrl.replace('/0/', '/' + a.id + '/');
+          } else if (defaultUrl) {
+            window.location.href = defaultUrl;
+          }
+          return;
+        }
+        let modalDefault = defaultUrl || '';
+        try{
+          if (!modalDefault || modalDefault.indexOf('/0/') === -1) modalDefault = baseMuralAreaUrl || modalDefault;
+        }catch(e){}
+        openMuralAreasModal(areas, modalDefault);
+      }
+
+      // Bind inicial usando handler nombrado (asegurando que no duplicamos)
+      function bindViewMuralButtons(scope=document){
+        Array.from(scope.querySelectorAll('.btn-view-mural')).forEach(btn => {
+          try{ btn.removeEventListener('click', handleViewMuralClick); }catch(e){}
+          btn.addEventListener('click', handleViewMuralClick);
+        });
+      }
+      bindViewMuralButtons(document);
+
+      // Attach handlers to existing-file remove buttons (edición)
+      try{
+        if (existingFilesList) {
+          existingFilesList.querySelectorAll('.existing-file-remove').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+              const li = btn.closest('.existing-file');
+              if (!li) return;
+              const archivoId = li.dataset.archivoId;
+              // toggle marked state
+              const marked = li.classList.toggle('marked-for-remove');
+              li.style.opacity = marked ? '0.5' : '';
+              // maintain hidden inputs to inform server which existentes to remove
+              try{
+                // remove any previous hidden
+                Array.from(document.querySelectorAll('input._remove_archivo')).filter(h=>h.value===archivoId).forEach(h=>h.remove());
+                if (marked && archivoId) {
+                  const h = document.createElement('input');
+                  h.type = 'hidden'; h.name = 'remove_archivos'; h.value = archivoId; h.className = '_remove_archivo';
+                  if (form) form.appendChild(h);
+                }
+              }catch(e){}
+              updatePreview();
+            });
+          });
+        }
+      }catch(e){}
+
+      // Nuevo usuario button opens modal
+      const btnNewUser = document.getElementById('btn-new-user');
+      if(btnNewUser){ btnNewUser.addEventListener('click', (e)=>{ e.preventDefault(); openUserModal('new'); }); }
+
+      // Attach edit buttons
+      document.querySelectorAll('[data-edit-user-id]').forEach(btn => {
+        btn.addEventListener('click', (e)=>{
+          const id = btn.getAttribute('data-edit-user-id');
+          const name = btn.getAttribute('data-edit-user-name') || '';
+          const email = btn.getAttribute('data-edit-user-email') || '';
+          const role = btn.getAttribute('data-edit-user-role') || '';
+          const areasStr = btn.getAttribute('data-edit-user-areas') || '';
+          const areas = areasStr ? areasStr.split(',').filter(Boolean) : [];
+          openUserModal('edit', {id: id, first_name: name.split(' ')[0] || '', last_name: name.split(' ').slice(1).join(' ') || '', email: email, areas: areas, role: role});
+        });
+      });
+
+      // Initialize Choices for user-areas select
+      try{
+        if(userAreasSelect && typeof Choices !== 'undefined'){
+          userAreasChoices = new Choices(userAreasSelect, { removeItemButton: true, shouldSort: false });
+          try{ userAreasSelect.dataset.choicesInitialized = '1'; }catch(e){}
+        }
+      }catch(e){}
+
+      if(profileCancel){ profileCancel.addEventListener('click', (e)=>{ hideProfilePanel(); }); }
+
+      if(profileForm){
+        profileForm.addEventListener('submit', (e)=>{
+          // simple client-side validation: if either password filled, they must match
+          const p1 = document.getElementById('profile-new-password');
+          const p2 = document.getElementById('profile-new-password-confirm');
+          if(p1 && p2){
+            const v1 = p1.value || '';
+            const v2 = p2.value || '';
+            if((v1.length>0 || v2.length>0) && v1 !== v2){
+              e.preventDefault();
+              alert('Las contraseñas no coinciden.');
+              return false;
+            }
+          }
+          // submit will POST to this same view with profile_update=1; implement server handling later
+          return true;
+        });
+      }
+
+      // Asegurar que el hidden 'accion' refleje el botón clickeado
+      document.querySelectorAll('button[type="submit"][name="accion"]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          try {
+            const hidden = document.getElementById('form-accion');
+            if (hidden && btn.name === 'accion' && btn.value) {
+              hidden.value = btn.value;
+            }
+          } catch (ex) { /* no romper la experiencia si falla */ }
+        });
+      });
+
+      // Si estamos en edición y el contenido tiene un color guardado, forzar
+      // que el select `form-color` muestre ese valor antes de renderizar la preview.
+      try {
+        if (initialColorValue && colorInput) {
+          // sólo sobrescribir si el select aún muestra el valor por defecto
+          const current = colorInput.value || '';
+          if (!current || current === 'blanco' || current === 'default') {
+            try { colorInput.value = initialColorValue; } catch(e) {}
+            try { colorInput.dispatchEvent(new Event('change', { bubbles: true })); } catch(e) {}
+          }
+        }
+      } catch(e) { /* noop */ }
+
+      // llamada inicial (también asegurar ejecución tras carga completa para Choices/u otros widgets)
+      updatePreview();
+      try{ window.addEventListener('load', ()=>{ try{ updatePreview(); }catch(e){} }); }catch(e){}
+
+      // Mejorar usabilidad: convertir <select multiple> en checkboxes visibles
+      function enhanceMultiSelect(selectId) {
+        try {
+          const sel = document.getElementById(selectId);
+          if (!sel || sel.tagName.toLowerCase() !== 'select' || !sel.multiple) return;
+          const wrapper = document.createElement('div');
+          wrapper.className = 'field';
+          Array.from(sel.options).forEach(opt => {
+            const label = document.createElement('label');
+            label.className = 'checkbox';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.name = sel.name; // same name so POST working
+            cb.value = opt.value;
+            if (opt.selected) cb.checked = true;
+            label.appendChild(cb);
+            label.appendChild(document.createTextNode(' ' + opt.text));
+            wrapper.appendChild(label);
+            wrapper.appendChild(document.createElement('br'));
+          });
+          sel.style.display = 'none';
+          sel.parentNode.insertBefore(wrapper, sel.nextSibling);
+        } catch (e) { /* no bloquear si falla */ }
+      }
+      // Inicialización segura de Choices.js con reintentos cortos.
+      // Si no está disponible o falla se usa enhanceMultiSelect como fallback.
+      try {
+        document.querySelectorAll('select[multiple]').forEach(sel => {
+          // función que intenta inicializar Choices y retorna true si tuvo éxito
+          function tryInitChoices() {
+            if (!window.Choices) return false;
+            if (!sel || sel.dataset.choicesInitialized) return true;
+            // si aún no hay opciones, esperar un poco y reintentar
+            if (!sel.options || sel.options.length === 0) return false;
+            try {
+              new Choices(sel, {
+                removeItemButton: true,
+                searchEnabled: true,
+                shouldSort: false,
+                placeholder: true,
+                placeholderValue: 'Seleccione...'
+              });
+              sel.dataset.choicesInitialized = '1';
+              return true;
+            } catch (e) {
+              return false;
+            }
+          }
+
+          if (tryInitChoices()) return;
+          // reintentar varias veces con un pequeño intervalo
+          let attempts = 0;
+          const maxAttempts = 10;
+          const waiter = () => {
+            attempts += 1;
+            if (tryInitChoices()) return;
+            if (attempts < maxAttempts) {
+              setTimeout(waiter, 100);
+            } else {
+              // fallback si no se pudo inicializar
+              try { enhanceMultiSelect(sel.id); } catch (e) { /* ignore */ }
+            }
+          };
+          setTimeout(waiter, 50);
+        });
+      } catch (e) {
+        try { enhanceMultiSelect('form-destinatarios'); } catch (ex) { /* ignore */ }
+      }
+
+      // --- Delete confirmation modal (contenidos) ---
+      const deleteModal = document.getElementById('confirm-delete-modal');
+      const deleteItemEl = document.getElementById('confirm-delete-item');
+      const deleteForm = document.getElementById('confirm-delete-form');
+      const deleteClose = document.getElementById('confirm-delete-close');
+      const deleteNo = document.getElementById('confirm-delete-no');
+      const deleteYes = document.getElementById('confirm-delete-yes');
+      let deleteActionUrl = null;
+      function openDeleteModal(title, url){
+        deleteActionUrl = url;
+        if(deleteItemEl) deleteItemEl.textContent = title || '';
+        if(deleteModal) deleteModal.classList.add('is-active');
+      }
+      function closeDeleteModal(){
+        if(deleteModal) deleteModal.classList.remove('is-active');
+        deleteActionUrl = null;
+      }
+      // attach delete buttons
+      document.querySelectorAll('.btn-delete-content').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const url = btn.dataset.deleteUrl;
+          const title = btn.dataset.deleteTitle;
+          openDeleteModal(title, url);
+        });
+      });
+      if(deleteClose) deleteClose.addEventListener('click', closeDeleteModal);
+      if(deleteNo) deleteNo.addEventListener('click', closeDeleteModal);
+      if(deleteYes) deleteYes.addEventListener('click', ()=>{
+        if(!deleteActionUrl) return closeDeleteModal();
+        // set form action and submit
+        try{ deleteForm.action = deleteActionUrl; deleteForm.submit(); } catch(e){ closeDeleteModal(); }
+      });
+
+      // Asegurar que el hidden 'estado' refleje el botón clickeado
+      document.querySelectorAll('button[type="submit"][name="estado"]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          try {
+            const hidden = document.getElementById('form-estado');
+            if (hidden && btn.name === 'estado' && btn.value) {
+              hidden.value = btn.value;
+            }
+          } catch (ex) { /* no romper la experiencia si falla */ }
+        });
+      });
+
+      // --- Polling ligero para actualizar la lista de contenidos cada N segundos ---
+      function setupContenidoPolling(intervalSeconds){
+        try{
+          const container = document.getElementById('contenidos-list');
+          if(!container) return; // no hay lista en esta vista
+          let polling = true;
+          // pausar cuando la pestaña está oculta
+          document.addEventListener('visibilitychange', ()=>{ polling = !document.hidden; });
+
+          async function fetchAndReplace(){
+            if(!polling) return;
+            try{
+              const url = window.location.pathname + window.location.search;
+              const res = await fetch(url, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+              if(!res.ok) return;
+              const text = await res.text();
+              // parsear y extraer el contenedor remoto
+              const parser = new DOMParser();
+              const doc = parser.parseFromString(text, 'text/html');
+              const remote = doc.getElementById('contenidos-list');
+              if(remote && container){
+                container.innerHTML = remote.innerHTML;
+                // re-attach basic handlers for delete/view buttons that may have been replaced
+                // small helper: rebind delete buttons
+                document.querySelectorAll('.btn-delete-content').forEach(btn => {
+                  btn.addEventListener('click', (e) => {
+                    const url = btn.dataset.deleteUrl;
+                    const title = btn.dataset.deleteTitle;
+                    // reuse existing modal functions if available
+                    try{ openDeleteModal(title, url); }catch(ex){}
+                  });
+                });
+                // rebind view mural buttons within the updated container using the named binder
+                try{ bindViewMuralButtons(container); }catch(e){ bindViewMuralButtons(); }
+              }
+            }catch(e){ /* fail silently */ }
+          }
+
+          // primero, hacer una llamada rápida tras carga
+          setTimeout(fetchAndReplace, 1000);
+          return setInterval(fetchAndReplace, Math.max(1, intervalSeconds) * 1000);
+        }catch(e){ /* noop */ }
+      }
+
+      // arrancar polling cada 10s
+      try{ setupContenidoPolling(10); }catch(e){}
+    });
+  </script>

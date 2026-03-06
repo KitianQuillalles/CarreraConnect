@@ -1,0 +1,26 @@
+{% extends "admin/base.html" %}
+{% load i18n %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | Administración Carrera Connect{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  /* Cambiar paleta a tonos verdes */
+  :root {
+    --primary: #58a05a;
+    --secondary: #2f8a46;
+    --header-bg: var(--secondary);
+    --button-bg: var(--secondary);
+    --button-hover-bg: #256a34;
+    --header-link-color: #ffffff;
+  }
+</style>
+{% endblock %}
+
+{% block branding %}
+<div id="site-name"><a href="{% url 'admin:index' %}">Administración Carrera Connect</a></div>
+{% if user.is_anonymous %}
+  {% include "admin/color_theme_toggle.html" %}
+{% endif %}
+{% endblock %}

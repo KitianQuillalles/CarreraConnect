@@ -1,0 +1,46 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Falló la verificación de seguridad (CSRF)</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+</head>
+<body>
+<section class="section">
+  <div class="container">
+    <div class="notification is-warning">
+      <h2 class="title is-4">Problema de seguridad: verificación CSRF fallida</h2>
+      <p>Lo sentimos — la verificación de seguridad (CSRF) ha fallado para su petición. Esto suele ocurrir cuando su sesión expiró o la página quedó abierta demasiado tiempo.</p>
+      <hr>
+      {% if user_authenticated %}
+        <p>Acciones recomendadas:</p>
+        <ul>
+          <li>Recargue la página y vuelva a enviar el formulario. (Botón abajo)</li>
+          <li>Si el problema persiste, cierre sesión y vuelva a ingresar.</li>
+          <li>Si sospecha actividad maliciosa, contacte al administrador.</li>
+        </ul>
+        <div style="margin-top:1rem">
+          <button class="button is-link" onclick="window.location.reload();">Recargar la página</button>
+          <a class="button" href="/operatividad/panel/">Volver al panel</a>
+          <a class="button is-light" href="/operatividad/logout/">Cerrar sesión</a>
+        </div>
+      {% else %}
+        <p>Acciones recomendadas:</p>
+        <ul>
+          <li>Inicie sesión y vuelva a intentar la operación.</li>
+          <li>Si el problema persiste, cierre el navegador y vuelva a abrirlo.</li>
+        </ul>
+        <div style="margin-top:1rem">
+          <a class="button is-link" href="/operatividad/login/?next={{ request.path }}">Iniciar sesión</a>
+          <a class="button" href="/">Volver al inicio</a>
+        </div>
+      {% endif %}
+      <hr>
+      <p class="is-size-7 has-text-grey">Detalle técnico: {{ reason }}</p>
+    </div>
+  </div>
+</section>
+</body>
+</html>

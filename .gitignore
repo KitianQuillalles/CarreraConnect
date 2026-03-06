@@ -1,0 +1,23 @@
+# Archivos de caché de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Base de datos local de Django
+db.sqlite3
+db.sqlite3-journal
+
+# Archivos de medios (imágenes o pdfs de prueba)
+media/
+
+# Entornos virtuales
+venv/
+.env
+local_settings.py
+
+# Docker
+# Ignorar archivos locales y de override que pueden contener variables sensibles
+docker-compose.override.yml
+docker-compose.*.yml
+Dockerfile
+.dockerignore
