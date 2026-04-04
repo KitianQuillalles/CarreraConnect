@@ -344,8 +344,9 @@
                 {% empty %}
                 {% endfor %}
               </div>
-              {# Guardar el cuerpo completo en un div oculto para evitar inyectar HTML en atributos data-*. #}
-              <div class="card-full-body" style="display:none;">{{ contenido.contenido|default_if_none:''|linebreaksbr }}</div>
+                {# Guardar el cuerpo completo en un div oculto. El campo `contenido` fue
+                  eliminado; usamos `breve_descripcion` como fallback para el modal. #}
+                <div class="card-full-body" style="display:none;">{{ contenido.breve_descripcion|default_if_none:''|linebreaksbr }}</div>
             </div>
             <footer class="card-footer">
               <span class="card-footer-item is-size-7 has-text-link">Ver detalle</span>
@@ -501,6 +502,8 @@
       const attachmentsDiv = card.querySelector('.card-attachments');
       if (attachmentsDiv) {
         const links = attachmentsDiv.querySelectorAll('.attachment-link');
+        // track first PDF URL to offer full-PDF view
+        let firstPdfUrl = null;
         links.forEach(a => {
           const url = a.getAttribute('href');
           const name = a.dataset.name || a.textContent || '';
@@ -640,6 +643,55 @@
 
           attachmentsContainer.appendChild(wrap);
         });
+
+        // If a PDF exists among attachments, add a "Ver PDF completo" button
+        try {
+          const existingPdfBtn = modal.querySelector('.pdf-full-btn');
+          if (firstPdfUrl) {
+            if (!existingPdfBtn) {
+              const pdfBtn = document.createElement('button');
+              pdfBtn.className = 'button is-link pdf-full-btn';
+              pdfBtn.style.marginLeft = '0.5rem';
+              pdfBtn.textContent = 'Ver PDF completo';
+
+              pdfBtn.addEventListener('click', () => {
+                if (!modalCuerpo) return;
+                // save previous body to restore later
+                modalCuerpo.dataset._prevHtml = modalCuerpo.innerHTML;
+                modalCuerpo.innerHTML = '';
+
+                const backWrap = document.createElement('div');
+                backWrap.style.marginBottom = '0.5rem';
+                const backBtn = document.createElement('button');
+                backBtn.className = 'button';
+                backBtn.textContent = 'Volver al contenido';
+                backBtn.addEventListener('click', () => {
+                  modalCuerpo.innerHTML = modalCuerpo.dataset._prevHtml || '';
+                });
+                backWrap.appendChild(backBtn);
+
+                const iframe = document.createElement('iframe');
+                let iframeSrc = firstPdfUrl;
+                iframeSrc = iframeSrc.includes('#') ? iframeSrc + '&toolbar=0' : iframeSrc + '#toolbar=0';
+                iframe.src = iframeSrc;
+                iframe.style.width = '100%';
+                iframe.style.height = '80vh';
+                iframe.style.border = '0';
+
+                modalCuerpo.appendChild(backWrap);
+                modalCuerpo.appendChild(iframe);
+              });
+
+              const headLeft = modal.querySelector('.modal-head-left');
+              if (headLeft) headLeft.appendChild(pdfBtn);
+              else modal.querySelector('.modal-card-head')?.appendChild(pdfBtn);
+            }
+          } else if (existingPdfBtn) {
+            existingPdfBtn.remove();
+          }
+        } catch (e) {
+          // non-fatal
+        }
       }
 
       // center modal and reset any drag transform
@@ -678,6 +730,19 @@
           try { ov.style.pointerEvents = 'none'; ov.remove(); } catch(e){}
         });
       }
+      // remove PDF-full button if present
+      try {
+        const pdfBtn = modal.querySelector('.pdf-full-btn');
+        if (pdfBtn) pdfBtn.remove();
+      } catch (e) {}
+
+      // restore modal body if a full-PDF iframe was active
+      try {
+        if (modalCuerpo && modalCuerpo.dataset && modalCuerpo.dataset._prevHtml) {
+          modalCuerpo.innerHTML = modalCuerpo.dataset._prevHtml;
+          delete modalCuerpo.dataset._prevHtml;
+        }
+      } catch (e) {}
       modal.classList.remove("is-active");
     }
 

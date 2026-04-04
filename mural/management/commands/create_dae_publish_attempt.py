@@ -34,7 +34,7 @@ class Command(BaseCommand):
             titulo='Intento de publicación desde DAE hacia otro nivel',
             breve_descripcion='Prueba: DAE intenta publicar hacia un área de otro nivel',
             contenido='Contenido de prueba generado por create_dae_publish_attempt',
-            prioridad=2,
+            prioridad=True,
             tipo_contenido=Contenido.TIPO_NOTICIA,
         )
 
