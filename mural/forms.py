@@ -10,6 +10,15 @@ NIVELES_CHOICES = [
 ]
 
 class ContenidoForm(forms.ModelForm):
+    breve_descripcion = forms.CharField(
+        required=False,
+        max_length=150,
+        widget=forms.TextInput(attrs={"id": "form-desc", "class": "input", "maxlength": "150", "placeholder": "Detalle breve (150 caracteres)"})
+    )
+    prioridad = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={"id": "form-prioridad"})
+    )
     destinatarios = forms.ModelMultipleChoiceField(
         queryset=Area.objects.all(),
         required=False,
@@ -82,13 +91,14 @@ class ContenidoForm(forms.ModelForm):
         fields = [
             "titulo",
             "breve_descripcion",
-            "contenido",
+            "prioridad",
             "tipo_contenido",
             "color",
         ]# NO incluimos 'area_origen' aquí, la asignaremos en la vista automáticamente
         widgets = {
-            "breve_descripcion": forms.Textarea(attrs={"rows": 3, "id": "form-desc", "class": "textarea", "maxlength": "150"}),
-            "contenido": forms.Textarea(attrs={"rows": 6, "id": "form-contenido", "class": "textarea"}),
+            "breve_descripcion": forms.TextInput(attrs={"id": "form-desc", "class": "input", "maxlength": "150", "placeholder": "Detalle breve (150 caracteres)"}),
+            # 'prioridad' se renderiza como checkbox por defecto; si el modelo tiene el campo,
+            # Django usará CheckboxInput. No forzamos widget aquí para mantener compatibilidad.
             # fecha_limite es ahora un campo del formulario, no un campo del modelo
             "titulo": forms.TextInput(attrs={"id": "form-titulo", "class": "input", "placeholder": "Ingrese Título"}),
             "tipo_contenido": forms.Select(attrs={"id": "form-tipo", "class": "select"}),

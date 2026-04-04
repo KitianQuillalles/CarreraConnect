@@ -5,12 +5,18 @@ from django.dispatch import receiver
 from django.utils import timezone
 
 
-# Todos los modelos solicitados viven en esta app `operatividad`.
-# Para soportar tanto el User por defecto como un modelo de usuario personalizado
-# la relación con usuario usa la referencia configurada en settings.AUTH_USER_MODEL.
+"""Modelos de la app `operatividad`.
+
+Cada modelo incluye un breve docstring y metadatos (`class Meta`) en español
+para facilitar la lectura y el mantenimiento del código.
+"""
 
 
 class Area(models.Model):
+    """Área organizacional (ej.: CFT, IP, U, GEN).
+
+    Contiene nombre, nivel de formación y relaciones con usuarios.
+    """
     NIVEL_CFT = 'CFT'
     NIVEL_IP = 'IP'
     NIVEL_U = 'U'
@@ -49,7 +55,45 @@ class Area(models.Model):
         return f"{self.nombre} ({self.nivel_formacion})"
 
 
+class Ubicacion(models.Model):
+    """Ubicación física (ej: sede, comuna) según el MER."""
+    sede = models.CharField(max_length=100)
+    comuna = models.CharField(max_length=100, blank=True)
+
+    class Meta:
+        verbose_name = 'Ubicación'
+        verbose_name_plural = 'Ubicaciones'
+
+    def __str__(self):
+        return f"{self.sede} ({self.comuna})" if self.comuna else self.sede
+
+
+class Piso(models.Model):
+    """Relación entre `Area` y `Ubicacion` con el número/nombre de piso.
+
+    En el MER `Piso` actúa como una entidad asociativa (tiene PK compuesta
+    por area+ubicacion). Django no soporta PK compuestas, así que mantenemos
+    un id automático pero forzamos la unicidad con `unique_together` para
+    replicar la restricción del MER.
+    """
+    area = models.ForeignKey(Area, on_delete=models.CASCADE, related_name='pisos')
+    ubicacion = models.ForeignKey(Ubicacion, on_delete=models.CASCADE, related_name='pisos')
+    piso = models.CharField(max_length=50)
+
+    class Meta:
+        verbose_name = 'Piso'
+        verbose_name_plural = 'Pisos'
+        unique_together = ('area', 'ubicacion')
+
+    def __str__(self):
+        return f"{self.piso} - {self.area} @ {self.ubicacion}"
+
+
 class AsignacionArea(models.Model):
+    """Asignación de un usuario a un `Area` con un rol concreto.
+
+    Actúa como tabla intermedia (M2M). Se evita duplicidad con `unique_together`.
+    """
     ROL_JEFE = 'Jefe de área'
     ROL_ADMIN = 'Administrador'
     ROL_EDITOR = 'Editor de contenido'
@@ -85,6 +129,11 @@ class AsignacionArea(models.Model):
 
 
 class Contenido(models.Model):
+    """Contenido creado por un área: noticia, evento, logro u otro.
+
+    Incluye prioridad, tipo y fecha de creación. `ordering` muestra primero
+    los más prioritarios y recientes.
+    """
     TIPO_NOTICIA = 'NOTICIA'
     TIPO_EVENTO = 'EVENTO'
     TIPO_LOGRO = 'LOGRO'
@@ -99,8 +148,11 @@ class Contenido(models.Model):
     area_origen = models.ForeignKey(Area, on_delete=models.PROTECT, related_name='contenidos_origen')
     titulo = models.CharField(max_length=200)
     breve_descripcion = models.CharField(max_length=255)
-    contenido = models.TextField()
-    prioridad = models.PositiveSmallIntegerField(default=3)
+    # El campo `contenido` (texto completo) ha sido eliminado: el detalle
+    # ahora se gestiona mediante archivos adjuntos y la `breve_descripcion`.
+    # Para compatibilidad en templates/lectura, usar `breve_descripcion`.
+    # Cambiado a booleano: marca si el contenido es prioritario o no.
+    prioridad = models.BooleanField(default=False)
     tipo_contenido = models.CharField(max_length=10, choices=TIPO_CHOICES)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     color = models.CharField(max_length=20, blank=True)
@@ -108,6 +160,7 @@ class Contenido(models.Model):
     class Meta:
         verbose_name = 'Contenido'
         verbose_name_plural = 'Contenidos'
+        # Ordenar primero por prioridad (True > False), luego por fecha reciente.
         ordering = ['-prioridad', '-fecha_creacion']
 
     def __str__(self):
@@ -115,6 +168,10 @@ class Contenido(models.Model):
 
 
 class AreaDestinatario(models.Model):
+    """Relación que indica a qué `Area` va dirigido un `Contenido`.
+
+    Guarda estado, fecha de asignación y una posible fecha límite.
+    """
     ESTADO_BORRADOR = 'BORRADOR'
     ESTADO_PUBLICADO = 'PUBLICADO'
     ESTADO_EN_ESPERA = 'EN_ESPERA'
@@ -143,6 +200,11 @@ class AreaDestinatario(models.Model):
 
 
 class Archivo(models.Model):
+    """Adjuntos asociados a un `Contenido`.
+
+    Los ficheros se almacenan en la carpeta `mural_adjuntos/` dentro de `MEDIA_ROOT`.
+    """
+
     contenido = models.ForeignKey(Contenido, on_delete=models.CASCADE, related_name='archivos')
     archivo = models.FileField(upload_to='mural_adjuntos/')
     tipo_archivo = models.CharField(max_length=50, blank=True)
@@ -157,6 +219,11 @@ class Archivo(models.Model):
 
 @receiver(post_delete, sender=Archivo)
 def archivo_post_delete(sender, instance, **kwargs):
+    """Eliminar el fichero físico asociado cuando se borra la instancia.
+
+    Se usa el backend de almacenamiento configurado. Los errores se silencian
+    para no interrumpir la eliminación del objeto en la base de datos.
+    """
     try:
         if instance.archivo:
             storage = instance.archivo.storage
@@ -169,7 +236,8 @@ def archivo_post_delete(sender, instance, **kwargs):
 
 @receiver(pre_save, sender=Archivo)
 def archivo_pre_save_delete_old(sender, instance, **kwargs):
-    # si estamos reemplazando un archivo existente, eliminar el fichero anterior
+    """Si se reemplaza el fichero de una instancia existente, borrar el anterior."""
+    # Si es creación, no existe fichero anterior
     if not instance.pk:
         return
     try:
@@ -187,12 +255,20 @@ def archivo_pre_save_delete_old(sender, instance, **kwargs):
         pass
 
 
-# Proxy/adaptador para exponer los campos legacy del antiguo modelo `Usuario`
-# como propiedades sobre el `auth.User` usado en settings.AUTH_USER_MODEL.
+"""Proxy/adaptador para exponer los campos legacy del antiguo modelo `Usuario`.
+
+Se reutiliza `auth.User` (no se crea una tabla nueva) y se exponen
+propiedades en español para compatibilidad con el código existente.
+"""
 from django.contrib.auth.models import User as DjangoUser
 
 
 class UsuarioProxy(DjangoUser):
+    """Proxy de `User` que añade accesores en español.
+
+    Útil para conservar llamadas como `usuario.nombre` o
+    `usuario.correo_institucional` en el código legado.
+    """
     class Meta:
         proxy = True
         verbose_name = 'Usuario'

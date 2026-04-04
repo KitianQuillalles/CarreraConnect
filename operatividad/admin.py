@@ -10,6 +10,8 @@ from .models import (
     AreaDestinatario,
     Archivo,
     UsuarioProxy,
+    Ubicacion,
+    Piso,
 )
 
 
@@ -59,6 +61,18 @@ class AreaDestinatarioAdmin(admin.ModelAdmin):
 @admin.register(Archivo)
 class ArchivoAdmin(admin.ModelAdmin):
     list_display = ('archivo', 'contenido', 'tipo_archivo')
+
+
+@admin.register(Ubicacion)
+class UbicacionAdmin(admin.ModelAdmin):
+    list_display = ('sede', 'comuna')
+    search_fields = ('sede', 'comuna')
+
+
+@admin.register(Piso)
+class PisoAdmin(admin.ModelAdmin):
+    list_display = ('piso', 'area', 'ubicacion')
+    search_fields = ('piso', 'area__nombre', 'ubicacion__sede')
 
 
 class UsuarioProxyForm(forms.ModelForm):

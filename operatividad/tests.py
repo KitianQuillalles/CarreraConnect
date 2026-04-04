@@ -74,7 +74,7 @@ class SimpleOperatividadTests(TestCase):
         from django.utils import timezone
         from datetime import timedelta
         future = (timezone.now() + timedelta(days=1)).strftime('%Y-%m-%dT%H:%M')
-        data = {'titulo':'T','breve_descripcion':'b','contenido':'c','tipo_contenido':'NOTICIA','destinatarios':[str(self.area_inf.id)],'fecha_publicacion_programada':future,'accion':'publicar'}
+        data = {'titulo':'T','breve_descripcion':'b','tipo_contenido':'NOTICIA','destinatarios':[str(self.area_inf.id)],'fecha_publicacion_programada':future,'accion':'publicar'}
         r = self.client.post(reverse('contenido_crear'), data)
         self.assertIn(r.status_code, (200,302,303))
         c = Contenido.objects.filter(titulo='T').first()
@@ -88,7 +88,7 @@ class SimpleOperatividadTests(TestCase):
         self.assertTrue(promoted >= 0)
 
     def test_eliminar_contenido_y_permisos(self):
-        cont = Contenido.objects.create(area_origen=self.area_inf, titulo='X', breve_descripcion='b', contenido='c', tipo_contenido='NOTICIA')
+        cont = Contenido.objects.create(area_origen=self.area_inf, titulo='X', breve_descripcion='b', tipo_contenido='NOTICIA')
         AreaDestinatario.objects.create(area=self.area_inf, contenido=cont, estado=AreaDestinatario.ESTADO_PUBLICADO)
         self.client.force_login(self.user2)
         r = self.client.post(reverse('contenido_eliminar', args=[cont.pk]), {})

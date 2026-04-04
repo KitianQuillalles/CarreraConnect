@@ -1,29 +1,82 @@
 """Vistas del módulo `mural`.
 
-Se consolidó la implementación aquí; asegurar que no haya referencias
-circulares a `views_new`.
+Contiene vistas para listar, crear, editar y eliminar contenidos del mural.
+Se factoriza y documenta la lógica repetida para facilitar su mantenimiento.
 """
-from collections import OrderedDict
-import unicodedata
-
-from django.contrib import messages
+import datetime
 import logging
+
+from django import forms as django_forms
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth import get_user_model, update_session_auth_hash
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
+from django.db.models import Min, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-import datetime
-from django.contrib.auth import update_session_auth_hash
-from django.contrib.auth.decorators import login_required
-from django.db.models import Q, Min
-from django.conf import settings
-from django.core.exceptions import ValidationError
 
-from operatividad.models import Area, Contenido, Archivo as ArchivoModel, AreaDestinatario, AsignacionArea
-from django.contrib.auth import get_user_model
+from operatividad.models import (
+	Area,
+	Contenido,
+	Archivo as ArchivoModel,
+	AreaDestinatario,
+	AsignacionArea,
+)
+from operatividad.models import Ubicacion, Piso
 from .forms import ContenidoForm
-from django import forms as django_forms
 
 logger = logging.getLogger(__name__)
+
+
+def _areas_permitidas_para_usuario(usuario):
+	"""Devuelve el QuerySet de áreas que `usuario` puede ver/editar.
+
+	- Superuser: todas las áreas
+	- Otro: áreas donde es `usuario` responsable o está en `usuarios`.
+	"""
+	if usuario.is_superuser:
+		return Area.objects.all()
+	return Area.objects.filter(Q(usuarios=usuario) | Q(usuario=usuario)).distinct()
+
+# compatibilidad: mantener el nombre anterior
+_allowed_areas_for_user = _areas_permitidas_para_usuario
+
+
+def _es_dae(usuario):
+	"""Indica si `usuario` actúa como DAE (puede gestionar áreas GEN).
+
+	Devuelve True para `superuser` o usuarios relacionados a áreas con
+	`nivel_formacion == Area.NIVEL_GEN`.
+	"""
+	if usuario.is_superuser:
+		return True
+	return Area.objects.filter(Q(usuarios=usuario) | Q(usuario=usuario), nivel_formacion=Area.NIVEL_GEN).exists()
+
+# compatibilidad: mantener el nombre anterior
+_is_dae_like = _es_dae
+
+
+def _preparar_select_multiple(formulario, nombre_campo, qs=None):
+	"""Prepara `SelectMultiple` con clases y choices consistentes.
+
+	Si `qs` no se pasa, usa `formulario.fields[nombre_campo].queryset`.
+	Registra excepciones en el logger.
+	"""
+	try:
+		if nombre_campo in formulario.fields:
+			formulario.fields[nombre_campo].widget = django_forms.SelectMultiple(
+				attrs={"id": f"form-{nombre_campo}", "class": "select is-multiple is-fullwidth"}
+			)
+			if qs is None:
+				qs = formulario.fields[nombre_campo].queryset
+			formulario.fields[nombre_campo].choices = [(a.id, str(a)) for a in qs]
+	except Exception:
+		logger.exception("Error preparando widget select multiple %s", nombre_campo)
+
+# compatibilidad: mantener el nombre anterior
+_setup_select_multiple_field = _preparar_select_multiple
 
 
 def _group_areas_by_categoria():
@@ -207,7 +260,7 @@ def mural_principal(request, area_id=None):
 			# samesite='None' with secure=True if cross-site usage is required.
 			response.set_cookie('area_actual_id', str(area_actual.id), max_age=60 * 60 * 24 * 365, samesite='Lax')
 	except Exception:
-		pass
+		logger.exception('Error seteando cookie area_actual_id en mural_principal')
 	return response
 
 
@@ -220,18 +273,22 @@ def index(request):
 	try:
 		areas_u = Area.objects.filter(nivel_formacion=Area.NIVEL_U).order_by('nombre')
 	except Exception:
+		logger.exception('Error obteniendo areas U en index')
 		areas_u = Area.objects.none()
 	try:
 		areas_ip = Area.objects.filter(nivel_formacion=Area.NIVEL_IP).order_by('nombre')
 	except Exception:
+		logger.exception('Error obteniendo areas IP en index')
 		areas_ip = Area.objects.none()
 	try:
 		areas_cft = Area.objects.filter(nivel_formacion=Area.NIVEL_CFT).order_by('nombre')
 	except Exception:
+		logger.exception('Error obteniendo areas CFT en index')
 		areas_cft = Area.objects.none()
 	try:
 		areas_gen = Area.objects.filter(nivel_formacion=Area.NIVEL_GEN).order_by('nombre')
 	except Exception:
+		logger.exception('Error obteniendo areas GEN en index')
 		areas_gen = Area.objects.none()
 
 	return render(request, 'mural/index.html', {
@@ -255,11 +312,56 @@ def contenidos_mis_areas(request):
 		# if settings.DEBUG and (promoted_count or expired_count):
 		#	messages.debug(request, f"Sync publication: promoted={promoted_count} expired={expired_count}")
 	except Exception:
-		# proteger la vista ante cualquier fallo de sincronización
-		pass
+		logger.exception('Error sincronizando estados de publicación en contenidos_mis_areas')
 
 	user = request.user
-	allowed_areas = Area.objects.filter(Q(usuarios=user) | Q(usuario=user)).distinct() if not user.is_superuser else Area.objects.all()
+	areas_permitidas = _allowed_areas_for_user(user)
+
+	# Preparar mapeo comuna -> sedes (ubicaciones) a partir de los Pisos vinculados
+	sedes_por_comuna = {}
+	try:
+		pisos_ubic = Piso.objects.filter(area__in=areas_permitidas).select_related('ubicacion')
+		temp_sedes = {}
+		# además construir mapping sede_id -> areas (para filtrar áreas por sede en el frontend)
+		areas_por_sede = {}
+		for p in pisos_ubic:
+			ubic = getattr(p, 'ubicacion', None)
+			if not ubic:
+				continue
+			com = (ubic.comuna or '').strip()
+			if not com:
+				continue
+			if com not in temp_sedes:
+				temp_sedes[com] = {}
+			if ubic.id not in temp_sedes[com]:
+				temp_sedes[com][ubic.id] = {'id': ubic.id, 'name': ubic.sede}
+			# areas_por_sede: agregar el área asociada al piso bajo la sede
+			try:
+				if ubic.id not in areas_por_sede:
+					areas_por_sede[ubic.id] = {}
+				area_obj = getattr(p, 'area', None)
+				if area_obj:
+					areas_por_sede[ubic.id][area_obj.id] = {'id': area_obj.id, 'name': str(area_obj)}
+			except Exception:
+				logger.exception('Error agregando area a areas_por_sede for piso %s', getattr(p, 'id', None))
+		# convertir a listas ordenadas por nombre
+		for com, buf in temp_sedes.items():
+			sedes_por_comuna[com] = sorted(list(buf.values()), key=lambda x: x['name'])
+	except Exception:
+		logger.exception('Error construyendo sedes_por_comuna en contenidos_mis_areas')
+
+	# Normalizar areas_por_sede a formato simple: sede_id -> list of {id,name}
+	try:
+		_aps = {}
+		for sede_id, amap in (areas_por_sede.items() if 'areas_por_sede' in locals() else []):
+			_aps[sede_id] = sorted(list(amap.values()), key=lambda x: x['name'])
+		areas_por_sede = _aps
+	except Exception:
+		areas_por_sede = {}
+
+	# Defaults para comunas/areas_por_comuna (siempre pasar al template)
+	comunas = []
+	areas_por_comuna = {}
 
 	# Perfil: calcular rol asociado a través de AsignacionArea (si existe)
 	profile_role = None
@@ -273,6 +375,7 @@ def contenidos_mis_areas(request):
 			else:
 				profile_role = str(getattr(asig, 'rol', '') or '')
 	except Exception:
+		logger.exception('Error calculando profile_role en contenidos_mis_areas')
 		profile_role = None
 
 	# Permiso para gestionar usuarios: superuser o Jefe de área
@@ -284,6 +387,7 @@ def contenidos_mis_areas(request):
 			# si tiene alguna asignación como Jefe de área, puede gestionar usuarios de sus áreas
 			can_manage_users = AsignacionArea.objects.filter(usuario=request.user, rol=AsignacionArea.ROL_JEFE).exists()
 	except Exception:
+		logger.exception('Error comprobando permiso gestionar usuarios')
 		can_manage_users = False
 
 	# Si puede gestionar usuarios, preparar la lista para el template
@@ -295,7 +399,7 @@ def contenidos_mis_areas(request):
 			if request.user.is_superuser or request.user.is_staff:
 				users_qs = User.objects.all()
 			else:
-				users_qs = User.objects.filter(asignaciones_area__area__in=allowed_areas).distinct()
+				users_qs = User.objects.filter(asignaciones_area__area__in=areas_permitidas).distinct()
 			# construir lista ligera para la plantilla
 			for u in users_qs.order_by('first_name','last_name'):
 				# áreas y rol principal
@@ -303,7 +407,7 @@ def contenidos_mis_areas(request):
 				areas = [a.nombre for a in areas_qs]
 				areas_ids = [a.id for a in areas_qs]
 				# determinar rol por asignación en las áreas que el current user puede ver
-				rol_obj = AsignacionArea.objects.filter(usuario=u, area__in=allowed_areas).first()
+				rol_obj = AsignacionArea.objects.filter(usuario=u, area__in=areas_permitidas).first()
 				if u.is_superuser:
 					display_role = 'Administrador'
 				elif rol_obj:
@@ -312,15 +416,48 @@ def contenidos_mis_areas(request):
 					display_role = ''
 				users_list.append({'id': u.id, 'nombre': u.get_full_name() or u.username, 'email': u.email, 'areas': areas, 'areas_ids': areas_ids, 'role': display_role})
 		except Exception:
+			logger.exception('Error construyendo users_list en contenidos_mis_areas')
 			users_list = []
 		# lista de áreas para el select del modal
 		try:
 			if request.user.is_superuser or request.user.is_staff:
 				all_areas = list(Area.objects.all().order_by('nombre'))
 			else:
-				all_areas = list(allowed_areas.order_by('nombre'))
+				all_areas = list(areas_permitidas.order_by('nombre'))
 		except Exception:
+			logger.exception('Error obteniendo all_areas en contenidos_mis_areas')
 			all_areas = []
+
+		# Preparar lista de comunas y mapping área -> comuna(s) para el modal
+		comunas = []
+		areas_por_comuna = {}
+		try:
+			# Obtener Pisos que vinculan áreas con ubicaciones
+			pisos_qs = Piso.objects.filter(area__in=all_areas).select_related('ubicacion', 'area')
+			# Para evitar duplicados: por cada comuna mantenemos un set de area_ids
+			# Así, si la misma área se imparte en varias sedes dentro de la misma comuna
+			# sólo se mostrará una vez. Si la misma área aparece en otra comuna, se
+			# incluirá también bajo esa comuna (se tratan como entradas distintas).
+			temp_map = {}
+			for p in pisos_qs:
+				com = (p.ubicacion.comuna or '').strip()
+				if not com:
+					# ignorar ubicaciones sin comuna
+					continue
+				if com not in temp_map:
+					temp_map[com] = {'seen': set(), 'areas': []}
+				area_id = getattr(p.area, 'id', None)
+				if area_id is None:
+					continue
+				if area_id not in temp_map[com]['seen']:
+					temp_map[com]['seen'].add(area_id)
+					temp_map[com]['areas'].append({'id': area_id, 'name': str(p.area)})
+			# convertir al formato final: comuna -> lista de areas ordenadas
+			for com, data in temp_map.items():
+				areas_por_comuna[com] = sorted(data['areas'], key=lambda x: x['name'])
+			comunas = sorted(list(areas_por_comuna.keys()))
+		except Exception:
+			logger.exception('Error construyendo comunas/areas_por_comuna en contenidos_mis_areas')
 
 	# Manejo de actualización de perfil enviado desde la plantilla
 	if request.method == 'POST' and request.POST.get('profile_update'):
@@ -365,8 +502,8 @@ def contenidos_mis_areas(request):
 	if user.is_superuser:
 		contenidos = Contenido.objects.all()
 	else:
-		if allowed_areas.exists():
-			contenidos = Contenido.objects.filter(Q(area_origen__in=allowed_areas) | Q(destinatarios__area__in=allowed_areas)).distinct()
+		if areas_permitidas.exists():
+			contenidos = Contenido.objects.filter(Q(area_origen__in=areas_permitidas) | Q(destinatarios__area__in=areas_permitidas)).distinct()
 		else:
 			messages.error(request, 'Su usuario no tiene un área asignada.')
 			contenidos = Contenido.objects.none()
@@ -384,45 +521,30 @@ def contenidos_mis_areas(request):
 	# Formulario para creación/edición
 	form = ContenidoForm(user=request.user)
 
-	# Determinar si el usuario es DAE-like: superuser o está relacionado a áreas de nivel GEN
+	# Determinar si el usuario actúa como DAE (puede elegir niveles y todas las áreas)
 	try:
-		is_dae_like = True if user.is_superuser else Area.objects.filter(Q(usuarios=user) | Q(usuario=user), nivel_formacion=Area.NIVEL_GEN).exists()
-		if user.is_superuser or is_dae_like:
-			# superuser y usuarios DAE-like pueden ver todas las áreas y elegir niveles
+		can_choose_multiple_origins = _is_dae_like(user)
+		if can_choose_multiple_origins:
 			form.fields['destinatarios'].queryset = Area.objects.all()
-			can_choose_multiple_origins = True
 		else:
-			# usuarios normales ven sólo sus áreas
-			form.fields['destinatarios'].queryset = allowed_areas
-			can_choose_multiple_origins = False
-			_default_area = _user_default_area(user, allowed_areas)
+			form.fields['destinatarios'].queryset = areas_permitidas
+			_default_area = _user_default_area(user, areas_permitidas)
 			if _default_area:
 				form.initial['area_origen'] = _default_area
-		# por defecto, preseleccionar en destinatarios las áreas relacionadas al usuario
+		# preseleccionar destinatarios por defecto si no es superuser
 		try:
 			if not user.is_superuser:
-				form.initial['destinatarios'] = list(allowed_areas.values_list('id', flat=True))
+				form.initial['destinatarios'] = list(areas_permitidas.values_list('id', flat=True))
 		except Exception:
-			pass
+			logger.exception("Error preseleccionando destinatarios para %s", user)
 	except Exception:
-		# proteger en caso de errores al determinar permisos
+		logger.exception("Error determinando permisos DAE para %s", user)
 		can_choose_multiple_origins = False
 
 	# Asegurar que el widget del select multiple tenga un id y clases consistentes
-	try:
-		if 'destinatarios' in form.fields:
-			form.fields['destinatarios'].widget = django_forms.SelectMultiple(attrs={"id": "form-destinatarios", "class": "select is-multiple is-fullwidth"})
-			# Forzar choices también puede ayudar a algunos widgets a renderizar correctamente
-			try:
-				qs = form.fields['destinatarios'].queryset
-				form.fields['destinatarios'].choices = [(a.id, str(a)) for a in qs]
-			except Exception:
-				pass
-	except Exception:
-		# no romper la vista por fallos en la preparación del widget
-		pass
+	_setup_select_multiple_field(form, 'destinatarios')
 
-	filter_areas = Area.objects.all().order_by('nombre') if user.is_superuser else allowed_areas.order_by('nombre')
+	filter_areas = _allowed_areas_for_user(user).order_by('nombre')
 
 	# Preparar lista de contenidos y calcular estado agregado por contenido
 	contenidos_list = list(contenidos.order_by('-fecha_creacion'))
@@ -494,9 +616,9 @@ def contenidos_mis_areas(request):
 				if user.is_superuser:
 					c.can_edit = True
 				elif c.area_origen and c.area_origen.nivel_formacion == Area.NIVEL_GEN:
-					c.can_edit = is_dae_like
+					c.can_edit = _is_dae_like(user)
 				else:
-					c.can_edit = ((c.area_origen in allowed_areas) or c.destinatarios.filter(area__in=allowed_areas).exists())
+					c.can_edit = ((c.area_origen in areas_permitidas) or c.destinatarios.filter(area__in=areas_permitidas).exists())
 			except Exception:
 				c.can_edit = False
 		except Exception:
@@ -518,6 +640,10 @@ def contenidos_mis_areas(request):
 		'can_manage_users': can_manage_users,
 		'users_list': users_list,
 		'all_areas': all_areas,
+		'comunas': comunas if 'comunas' in locals() else [],
+		'areas_por_comuna': areas_por_comuna if 'areas_por_comuna' in locals() else {},
+		'sedes_por_comuna': sedes_por_comuna if 'sedes_por_comuna' in locals() else {},
+		'areas_por_sede': areas_por_sede if 'areas_por_sede' in locals() else {},
 	})
 
 
@@ -525,13 +651,13 @@ def contenidos_mis_areas(request):
 @login_required
 def contenido_crear(request):
 	user = request.user
-	allowed_areas = Area.objects.filter(Q(usuarios=user) | Q(usuario=user)).distinct() if not user.is_superuser else Area.objects.all()
+	allowed_areas = _allowed_areas_for_user(user)
 	if not user.is_superuser and not allowed_areas.exists():
 		messages.error(request, 'Su usuario no tiene un área asignada (rol/área).')
 		return redirect('contenidos_mis_areas')
 
-	# bandera de multi-origen (DAE-like): superuser o usuario relacionado a áreas GEN
-	can_multi = True if user.is_superuser else Area.objects.filter(Q(usuarios=user) | Q(usuario=user), nivel_formacion=Area.NIVEL_GEN).exists()
+	# bandera de multi-origen (DAE-like)
+	can_multi = _is_dae_like(user)
 
 	# Inicializar `area_origen` con la heurística por defecto para evitar
 	# UnboundLocalError cuando la vista se renderiza en GET (antes de cualquier POST).
@@ -548,35 +674,31 @@ def contenido_crear(request):
 
 	form = ContenidoForm(request.POST or None, user=request.user)
 	try:
+		# Algunos formularios pueden no exponer todos los campos (p. ej. tests ligeros),
+		# así que comprobar la existencia antes de asignar `queryset` para evitar KeyError.
 		if user.is_superuser:
-			form.fields['area_origen'].queryset = Area.objects.all()
-			form.fields['area_origen_multiple'].queryset = Area.objects.all()
-			form.fields['destinatarios'].queryset = Area.objects.all()
-		else:
-			form.fields['area_origen'].queryset = allowed_areas
-			form.fields['area_origen_multiple'].queryset = allowed_areas
-			# destinatarios disponibles por defecto se limitan a las áreas del usuario
-			# si el usuario es DAE-like (pertenece a GEN) permitir ver todas las áreas
-			is_dae_like = Area.objects.filter(Q(usuarios=user) | Q(usuario=user), nivel_formacion=Area.NIVEL_GEN).exists()
-			if is_dae_like:
+			if 'area_origen' in form.fields:
+				form.fields['area_origen'].queryset = Area.objects.all()
+			if 'area_origen_multiple' in form.fields:
+				form.fields['area_origen_multiple'].queryset = Area.objects.all()
+			if 'destinatarios' in form.fields:
 				form.fields['destinatarios'].queryset = Area.objects.all()
-			else:
-				form.fields['destinatarios'].queryset = allowed_areas
-			# Si el usuario puede elegir múltiples orígenes (DAE/superuser), no habilitamos un select adicional
+		else:
+			if 'area_origen' in form.fields:
+				form.fields['area_origen'].queryset = allowed_areas
+			if 'area_origen_multiple' in form.fields:
+				form.fields['area_origen_multiple'].queryset = allowed_areas
+			# destinatarios disponibles por defecto se limitan a las áreas del usuario
+			if 'destinatarios' in form.fields:
+				if can_multi:
+					form.fields['destinatarios'].queryset = Area.objects.all()
+				else:
+					form.fields['destinatarios'].queryset = allowed_areas
 	except Exception:
-		pass
+		logger.exception("Error preparando querysets del formulario de creación")
 
 	# Asegurar widget consistente para el select multiple en la vista de creación
-	try:
-		if 'destinatarios' in form.fields:
-			form.fields['destinatarios'].widget = django_forms.SelectMultiple(attrs={"id": "form-destinatarios", "class": "select is-multiple is-fullwidth"})
-			try:
-				qs2 = form.fields['destinatarios'].queryset
-				form.fields['destinatarios'].choices = [(a.id, str(a)) for a in qs2]
-			except Exception:
-				pass
-	except Exception:
-		pass
+	_setup_select_multiple_field(form, 'destinatarios')
 	# Preseleccionar automáticamente las áreas del usuario en creación (si no es POST)
 	try:
 		if request.method != 'POST' and 'destinatarios' in form.fields:
@@ -588,6 +710,37 @@ def contenido_crear(request):
 		pass
 
 	if request.method == 'POST' and form.is_valid():
+		# Validar comuna y sedes enviadas desde la plantilla
+		comuna_selected = (request.POST.get('comuna') or '').strip()
+		sedes_selected = request.POST.getlist('sedes') or []
+		if comuna_selected:
+			# validar que las sedes seleccionadas realmente pertenezcan a la comuna
+			try:
+				valid_sedes_qs = Ubicacion.objects.filter(id__in=[int(x) for x in sedes_selected], comuna__iexact=comuna_selected)
+				if sedes_selected and valid_sedes_qs.count() != len(sedes_selected):
+					form.add_error(None, 'Se han seleccionado sedes inválidas para la comuna indicada.')
+					return render(request, 'operatividad/gest_contenidos.html', {
+						'form': form,
+						'accion': 'Crear',
+						'contenidos': Contenido.objects.filter(area_origen__in=allowed_areas).order_by('-fecha_creacion'),
+						'default_area_id': area_origen.id if area_origen else None,
+						'can_choose_multiple_origins': can_multi,
+						'allowed_extensions': getattr(settings, 'FILE_UPLOAD_ALLOWED_EXTENSIONS', []),
+						'max_size_mb': getattr(settings, 'FILE_UPLOAD_MAX_SIZE_MB', 20),
+						'size_by_type': getattr(settings, 'FILE_UPLOAD_MAX_SIZE_BY_TYPE', {}),
+					})
+			except Exception:
+				form.add_error(None, 'Error validando sedes/comuna.')
+				return render(request, 'operatividad/gest_contenidos.html', {
+					'form': form,
+					'accion': 'Crear',
+					'contenidos': Contenido.objects.filter(area_origen__in=allowed_areas).order_by('-fecha_creacion'),
+					'default_area_id': area_origen.id if area_origen else None,
+					'can_choose_multiple_origins': can_multi,
+					'allowed_extensions': getattr(settings, 'FILE_UPLOAD_ALLOWED_EXTENSIONS', []),
+					'max_size_mb': getattr(settings, 'FILE_UPLOAD_MAX_SIZE_MB', 20),
+					'size_by_type': getattr(settings, 'FILE_UPLOAD_MAX_SIZE_BY_TYPE', {}),
+				})
 		# En DEBUG mostrar el contenido bruto del POST para depuración de la plantilla
 		try:
 			from django.conf import settings as _dj_settings
@@ -725,17 +878,37 @@ def contenido_crear(request):
 		try:
 			selected_levels = form.cleaned_data.get('niveles_destino') or []
 			if selected_levels:
-				# expandir niveles y usar esos destinos
 				destinos = list(Area.objects.filter(nivel_formacion__in=selected_levels))
 			else:
 				destinos = list(form.cleaned_data.get('destinatarios') or [])
 		except Exception:
+			logger.exception("Error resolviendo destinos desde cleaned_data")
 			destinos = []
 
+		# Si se seleccionó comuna, filtrar destinos para que sólo incluyan áreas disponibles en esa comuna
+		if comuna_selected:
+			try:
+				areas_in_comuna = set(Piso.objects.filter(ubicacion__comuna__iexact=comuna_selected).values_list('area_id', flat=True))
+				if areas_in_comuna:
+					destinos = [a for a in destinos if getattr(a, 'id', None) in areas_in_comuna]
+					if not destinos:
+						form.add_error(None, 'No hay áreas disponibles en la comuna/sedes seleccionadas.')
+						return render(request, 'operatividad/gest_contenidos.html', {
+							'form': form,
+							'accion': 'Crear',
+							'contenidos': Contenido.objects.filter(area_origen__in=allowed_areas).order_by('-fecha_creacion'),
+							'default_area_id': area_origen.id if area_origen else None,
+							'can_choose_multiple_origins': can_multi,
+							'allowed_extensions': getattr(settings, 'FILE_UPLOAD_ALLOWED_EXTENSIONS', []),
+							'max_size_mb': getattr(settings, 'FILE_UPLOAD_MAX_SIZE_MB', 20),
+							'size_by_type': getattr(settings, 'FILE_UPLOAD_MAX_SIZE_BY_TYPE', {}),
+						})
+			except Exception:
+				logger.exception('Error filtrando areas por comuna')
+		
 		# Filtrar destinos por permisos también en edición
 		try:
-			is_dae_like = True if user.is_superuser else Area.objects.filter(Q(usuarios=user) | Q(usuario=user), nivel_formacion=Area.NIVEL_GEN).exists()
-			if not is_dae_like and not user.is_superuser:
+			if not can_multi and not user.is_superuser:
 				allowed_set = set(allowed_areas.values_list('id', flat=True))
 				filtered = [a for a in destinos if getattr(a, 'id', None) in allowed_set]
 				if len(filtered) != len(destinos):
@@ -743,21 +916,20 @@ def contenido_crear(request):
 					messages.warning(request, f"Algunas áreas seleccionadas quedaron fuera de su alcance y fueron excluidas: {removed}")
 				destinos = filtered
 		except Exception:
-			pass
+			logger.exception("Error filtrando destinos por permisos")
 
 		# Filtrar destinos por permisos: si el usuario NO es DAE-like ni superuser, solo permitir allowed_areas
+		# (segunda comprobación de permisos ya cubierta arriba; conservar por seguridad)
 		try:
-			is_dae_like = True if user.is_superuser else Area.objects.filter(Q(usuarios=user) | Q(usuario=user), nivel_formacion=Area.NIVEL_GEN).exists()
-			if not is_dae_like and not user.is_superuser:
+			if not can_multi and not user.is_superuser:
 				allowed_set = set(allowed_areas.values_list('id', flat=True))
 				filtered = [a for a in destinos if getattr(a, 'id', None) in allowed_set]
 				if len(filtered) != len(destinos):
-					# informar que algunos destinos fueron removidos por permisos
 					removed = [str(a) for a in destinos if getattr(a, 'id', None) not in allowed_set]
 					messages.warning(request, f"Algunas áreas seleccionadas quedaron fuera de su alcance y fueron excluidas: {removed}")
 				destinos = filtered
 		except Exception:
-			pass
+			logger.exception("Error en segunda comprobación de permisos de destinos")
 
 		# Mostrar cleaned_data en edición para depuración (DEBUG)
 		try:
@@ -864,7 +1036,7 @@ def contenido_crear(request):
 					if ad.estado == AreaDestinatario.ESTADO_PUBLICADO:
 						created_for_publish.append(area_dest.nombre)
 				except Exception:
-					pass
+					logger.exception("Error marcando area publicada %s", getattr(area_dest, 'id', None))
 			except Exception:
 				# no interrumpir flujo por errores en destinatarios
 				pass
@@ -935,7 +1107,7 @@ def contenido_crear(request):
 def contenido_editar(request, pk):
 	contenido = get_object_or_404(Contenido, pk=pk)
 	user = request.user
-	allowed_areas = Area.objects.filter(Q(usuarios=user) | Q(usuario=user)).distinct() if not user.is_superuser else Area.objects.all()
+	allowed_areas = _allowed_areas_for_user(user)
 
 	# Permitir que cualquier usuario abra el formulario de edición.
 	# Las restricciones de permisos se aplican al guardar (no eliminar
@@ -945,29 +1117,19 @@ def contenido_editar(request, pk):
 	form = ContenidoForm(request.POST or None, instance=contenido, user=request.user)
 	try:
 		if not user.is_superuser:
-			# permitir que el select de destinatarios incluya tanto las áreas
-			# a las que el usuario pertenece como las áreas ya relacionadas al contenido,
-			# de modo que en edición no desaparezcan las opciones existentes.
+			# incluir áreas relacionadas al contenido y las que el usuario puede ver
 			content_area_ids = list(contenido.destinatarios.values_list('area_id', flat=True))
 			union_qs = Area.objects.filter(Q(id__in=content_area_ids) | Q(id__in=allowed_areas.values_list('id', flat=True))).distinct()
-			# Asegurar queryset y widget para que el select multiple muestre opciones y selecciones
 			form.fields['destinatarios'].queryset = union_qs
-			form.fields['destinatarios'].widget = django_forms.SelectMultiple(attrs={"id": "form-destinatarios", "class": "select is-multiple is-fullwidth"})
 			form.fields['area_origen'].queryset = allowed_areas
-			# Forzar choices (por si el widget no renderiza correctamente la queryset)
-			try:
-				form.fields['destinatarios'].choices = [(a.id, str(a)) for a in union_qs]
-			except Exception:
-				pass
-			# Debug: mostrar cuántas opciones y cuáles estaban preseleccionadas
+			_setup_select_multiple_field(form, 'destinatarios', qs=union_qs)
 			try:
 				if settings.DEBUG:
 					msgs = f"Edit form destinatarios: qs_count={form.fields['destinatarios'].queryset.count()} initial={list(content_area_ids)}"
-					# messages.info(request, msgs)
 			except Exception:
-				pass
+				logger.exception("Error debug edit form destinatarios")
 	except Exception:
-		pass
+		logger.exception("Error preparando formulario de edición")
 
 	# Preseleccionar destinatarios existentes para el formulario
 	try:
@@ -1041,8 +1203,8 @@ def contenido_editar(request, pk):
 						'contenido': contenido,
 						'contenidos': Contenido.objects.filter(area_origen=contenido.area_origen).order_by('-fecha_creacion'),
 						'default_area_id': contenido.area_origen.id if getattr(contenido, 'area_origen', None) else None,
-						'can_choose_multiple_origins': True if user.is_superuser else Area.objects.filter(Q(usuarios=user) | Q(usuario=user), nivel_formacion=Area.NIVEL_GEN).exists(),
-						'can_choose_levels': True if user.is_superuser else Area.objects.filter(Q(usuarios=user) | Q(usuario=user), nivel_formacion=Area.NIVEL_GEN).exists(),
+						'can_choose_multiple_origins': _is_dae_like(user),
+						'can_choose_levels': _is_dae_like(user),
 						'allowed_extensions': getattr(settings, 'FILE_UPLOAD_ALLOWED_EXTENSIONS', []),
 						'max_size_mb': getattr(settings, 'FILE_UPLOAD_MAX_SIZE_MB', 20),
 						'size_by_type': getattr(settings, 'FILE_UPLOAD_MAX_SIZE_BY_TYPE', {}),
@@ -1057,8 +1219,8 @@ def contenido_editar(request, pk):
 						'contenido': contenido,
 						'contenidos': Contenido.objects.filter(area_origen=contenido.area_origen).order_by('-fecha_creacion'),
 						'default_area_id': contenido.area_origen.id if getattr(contenido, 'area_origen', None) else None,
-						'can_choose_multiple_origins': True if user.is_superuser else Area.objects.filter(Q(usuarios=user) | Q(usuario=user), nivel_formacion=Area.NIVEL_GEN).exists(),
-						'can_choose_levels': True if user.is_superuser else Area.objects.filter(Q(usuarios=user) | Q(usuario=user), nivel_formacion=Area.NIVEL_GEN).exists(),
+						'can_choose_multiple_origins': _is_dae_like(user),
+						'can_choose_levels': _is_dae_like(user),
 						'allowed_extensions': getattr(settings, 'FILE_UPLOAD_ALLOWED_EXTENSIONS', []),
 						'max_size_mb': getattr(settings, 'FILE_UPLOAD_MAX_SIZE_MB', 20),
 						'size_by_type': getattr(settings, 'FILE_UPLOAD_MAX_SIZE_BY_TYPE', {}),
@@ -1095,7 +1257,7 @@ def contenido_editar(request, pk):
 		# En edición, preservar los destinatarios existentes que el usuario no
 		# tiene permiso para modificar (evitar eliminarlos accidentalmente).
 		try:
-			is_dae_like = True if user.is_superuser else Area.objects.filter(Q(usuarios=user) | Q(usuario=user), nivel_formacion=Area.NIVEL_GEN).exists()
+			is_dae_like = _is_dae_like(user)
 			if not is_dae_like and not user.is_superuser:
 				allowed_set = set(allowed_areas.values_list('id', flat=True))
 				# Destinos que el usuario puede asignar (seleccionados y dentro de allowed)
@@ -1245,9 +1407,9 @@ def contenido_editar(request, pk):
 		'contenido': contenido,
 		'contenidos': contenidos,
 		# DAE-like detection consistente
-		'can_choose_multiple_origins': True if user.is_superuser else Area.objects.filter(Q(usuarios=user) | Q(usuario=user), nivel_formacion=Area.NIVEL_GEN).exists(),
+		'can_choose_multiple_origins': _is_dae_like(user),
 		# permitir mostrar las checkboxes de niveles también en edición cuando proceda
-		'can_choose_levels': True if user.is_superuser else Area.objects.filter(Q(usuarios=user) | Q(usuario=user), nivel_formacion=Area.NIVEL_GEN).exists(),
+		'can_choose_levels': _is_dae_like(user),
 		'allowed_extensions': getattr(settings, 'FILE_UPLOAD_ALLOWED_EXTENSIONS', []),
 		'max_size_mb': getattr(settings, 'FILE_UPLOAD_MAX_SIZE_MB', 20),
 		'size_by_type': getattr(settings, 'FILE_UPLOAD_MAX_SIZE_BY_TYPE', {}),
@@ -1263,7 +1425,7 @@ def contenido_editar(request, pk):
 def contenido_eliminar(request, pk):
 	contenido = get_object_or_404(Contenido, pk=pk)
 	user = request.user
-	allowed_areas = Area.objects.filter(Q(usuarios=user) | Q(usuario=user)).distinct() if not user.is_superuser else Area.objects.all()
+	allowed_areas = _allowed_areas_for_user(user)
 
 	# La interfaz principal usa un modal y envía un POST directamente al endpoint.
 	# Comportamiento de eliminación:
@@ -1319,7 +1481,7 @@ def ir_a_mis_areas(request):
 	if user.is_superuser:
 		return redirect(reverse('mural_principal'))
 
-	areas = Area.objects.filter(Q(usuarios=user) | Q(usuario=user)).distinct()
+	areas = _allowed_areas_for_user(user)
 	if areas.count() == 1:
 		return redirect(reverse('mural_area', args=[areas.first().id]))
 	if areas.exists():
