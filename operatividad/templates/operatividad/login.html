@@ -1,65 +1,141 @@
 {% load static %}
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Login - Operatividad</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-  <style>
-    :root{--bg:#0b1220;--card:#f6f7f8;--card-border:#e2e6ea;--muted:#98a0aa;--accent:#005c3c}
-    body { background-color:var(--accent); display:flex; align-items:center; justify-content:center; min-height:100vh; color:#fff; }
-    .login-card { width:420px; background:var(--card); padding:2rem; border-radius:8px; box-shadow:0 8px 24px rgba(2,6,23,0.6); color:#0b1220; border:1px solid var(--card-border) }
-    .login-logo { display:block; margin:0 auto 1rem auto; height:72px }
-    .back-link { display:block; margin-bottom:1rem; color:var(--muted); text-decoration:none }
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Login - Operatividad</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+    />
+    <style>
+      :root {
+        --bg: #0b1220;
+        --card: #f6f7f8;
+        --card-border: #e2e6ea;
+        --muted: #98a0aa;
+        --accent: #005c3c;
+      }
+      body {
+        background-color: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        color: #fff;
+      }
+      .login-card {
+        width: 420px;
+        background: var(--card);
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(2, 6, 23, 0.6);
+        color: #0b1220;
+        border: 1px solid var(--card-border);
+      }
+      .login-logo {
+        display: block;
+        margin: 0 auto 1rem auto;
+        height: 72px;
+      }
+      .back-link {
+        display: block;
+        margin-bottom: 1rem;
+        color: var(--muted);
+        text-decoration: none;
+      }
 
-    /* Inputs light style to match card */
-    .input { background:#fff; color:#0b1220; border:1px solid rgba(11,18,32,0.08) }
-    .input::placeholder { color: rgba(11,18,32,0.35) }
-    .field label.label { color:#0b1220 }
+      /* Inputs light style to match card */
+      .input {
+        background: #fff;
+        color: #0b1220;
+        border: 1px solid rgba(11, 18, 32, 0.08);
+      }
+      .input::placeholder {
+        color: rgba(11, 18, 32, 0.35);
+      }
+      .field label.label {
+        color: #0b1220;
+      }
 
-    /* Botón verde acorde */
-    .button.is-primary { background:var(--accent); border-color:var(--accent); color:#ffffff }
-    .button.is-primary:hover { background:#074f33 }
-  </style>
-</head>
-<body>
+      /* Botón verde acorde */
+      .button.is-primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #ffffff;
+      }
+      .button.is-primary:hover {
+        background: #074f33;
+      }
+    </style>
+  </head>
+  <body>
     <div>
-    <img src="{% static 'img/LogoCC.png' %}" alt="Logo" class="login-logo" style="height:200px; width:auto; object-fit:contain;">
-    <div class="login-card">
-      <form method="post" action="/operatividad/login/">
-        {% csrf_token %}
-        <input type="hidden" name="next" value="{% url 'contenidos_mis_areas' %}">
+      <img
+        src="{% static 'img/LogoCC.png' %}"
+        alt="Logo"
+        class="login-logo"
+        style="height: 200px; width: auto; object-fit: contain"
+      />
+      <div class="login-card">
+        <form method="post" action="/operatividad/login/">
+          {% csrf_token %}
+          <input
+            type="hidden"
+            name="next"
+            value="{% url 'contenidos_mis_areas' %}"
+          />
 
-        <div class="field">
-          <label class="label">Correo electrónico</label>
-          <div class="control has-icons-left">
-            <input class="input" type="email" name="email" placeholder="Ingrese Correo Institucional" required>
-            <span class="icon is-small is-left"><i class="fas fa-envelope"></i></span>
+          <div class="field">
+            <label class="label">Correo electrónico</label>
+            <div class="control has-icons-left">
+              <input
+                class="input"
+                type="email"
+                name="email"
+                placeholder="Ingrese Correo Institucional"
+                required
+              />
+              <span class="icon is-small is-left"
+                ><i class="fas fa-envelope"></i
+              ></span>
+            </div>
           </div>
-        </div>
 
-        <div class="field">
-          <label class="label">Contraseña</label>
-          <div class="control has-icons-left">
-            <input class="input" type="password" name="password" required>
-            <span class="icon is-small is-left"><i class="fas fa-lock"></i></span>
+          <div class="field">
+            <label class="label">Contraseña</label>
+            <div class="control has-icons-left">
+              <input class="input" type="password" name="password" required />
+              <span class="icon is-small is-left"
+                ><i class="fas fa-lock"></i
+              ></span>
+            </div>
           </div>
-        </div>
 
-        {% if messages %}
+          {% if messages %}
           <div class="notification is-danger is-light">
             {% for message in messages %}{{ message }}{% endfor %}
           </div>
-        {% endif %}
+          {% endif %}
 
-        <div class="field mt-4">
-          <button class="button is-primary is-fullwidth">Iniciar sesión</button>
-        </div>
-      </form>
+          <div class="field mt-4">
+            <button class="button is-primary is-fullwidth">
+              Iniciar sesión
+            </button>
+          </div>
+        </form>
+      </div>
+      <a
+        href="{% url 'index' %}"
+        class="back-link"
+        style="margin-top: 0.75rem; display: inline-block"
+        ><i class="fas fa-arrow-left"></i> Volver al mural</a
+      >
     </div>
-    <a href="{% url 'mural_principal' %}" class="back-link" style="margin-top:0.75rem; display:inline-block;"><i class="fas fa-arrow-left"></i> Volver al mural</a>
-  </div>
-</body>
+  </body>
 </html>

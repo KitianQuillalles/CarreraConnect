@@ -351,134 +351,152 @@
         </div>
         <!-- Sección de gestión de usuarios (oculta por defecto) -->
         <div id="users-section" class="is-hidden">
-          <div class="level">
-            <div class="level-left">
-              <h4 class="title is-5">Gestión de Usuarios</h4>
-              <p class="ml-3 is-size-7 has-text-grey">{{ users_list|length }} usuarios registrados</p>
-            </div>
-            <div class="level-right">
-              <div class="buttons">
-                <button id="btn-new-user" class="button is-success is-light"><span class="icon"><i class="fas fa-plus"></i></span><span>Nuevo Usuario</span></button>
+          <div class="box">
+            <div class="level is-mobile mb-4">
+              <div class="level-left">
+                <div class="level-item">
+                  <h3 class="title is-5 mb-0">Gestión de Usuarios</h3>
+                </div>
+              </div>
+              <div class="level-right">
+                <div class="level-item">
+                  <button id="btn-new-user" class="button is-publicar is-small">
+                    <span class="icon"><i class="fas fa-plus"></i></span>
+                    <span>Nuevo Usuario</span>
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-          {% if users_list %}
-            <div class="content">
-              {% for u in users_list %}
-                <article class="box">
-                  <div class="columns is-mobile is-vcentered">
-                    <div class="column">
-                      <p class="is-size-6 has-text-weight-semibold">{{ u.nombre }}</p>
-                      <p class="is-size-7 has-text-grey"><span class="icon"><i class="fas fa-envelope"></i></span> {{ u.email }} · {{ u.areas|join:", " }} · {{ u.role }}</p>
-                    </div>
-                    <div class="column is-narrow">
-                      <div class="buttons">
-                        <button class="button is-small" data-edit-user-id="{{ u.id }}" data-edit-user-name="{{ u.nombre|escapejs }}" data-edit-user-email="{{ u.email }}" data-edit-user-role="{{ u.role }}" data-edit-user-areas="{{ u.areas_ids|join:"," }}"><span class="icon"><i class="fas fa-edit"></i></span></button>
-                        <form method="post" action="{% url 'usuarios_eliminar' 0 %}" style="display:inline" onsubmit="return confirm('Eliminar usuario?');">
-                          {% csrf_token %}
-                          <input type="hidden" name="pk" value="{{ u.id }}">
-                          <button class="button is-small is-danger"><span class="icon"><i class="fas fa-trash"></i></span></button>
-                        </form>
+            
+            <p class="is-size-7 has-text-grey mb-4">{{ users_list|length }} usuarios registrados en el sistema.</p>
+
+            {% if users_list %}
+              <div class="content">
+                {% for u in users_list %}
+                  <article class="box mb-3" style="padding: 1rem;">
+                    <div class="columns is-mobile is-vcentered">
+                      <div class="column">
+                        <p class="is-size-6 has-text-weight-bold mb-1">{{ u.nombre }}</p>
+                        <p class="is-size-7 has-text-grey mb-1">
+                          <span class="icon is-small"><i class="fas fa-envelope"></i></span> {{ u.email }}
+                        </p>
+                        <p class="is-size-7">
+                          <span class="tag is-light is-info">{{ u.role|default:"Sin Rol" }}</span> 
+                          <span class="has-text-grey ml-2">{{ u.areas|join:", "|default:"Sin áreas asignadas" }}</span>
+                        </p>
+                      </div>
+                      <div class="column is-narrow">
+                        <div class="buttons are-small">
+                          <button class="button is-light" data-edit-user-id="{{ u.id }}" data-edit-user-name="{{ u.nombre|escapejs }}" data-edit-user-email="{{ u.email }}" data-edit-user-role="{{ u.role }}" data-edit-user-areas="{{ u.areas_ids|join:"," }}">
+                            <span class="icon"><i class="fas fa-edit"></i></span>
+                          </button>
+                          <button type="button" class="button is-danger is-light btn-delete-user" data-delete-url="{% url 'usuarios_eliminar' u.id %}" data-user-name="{{ u.nombre|escapejs }}">
+                            <span class="icon"><i class="fas fa-trash"></i></span>
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </article>
-              {% endfor %}
-            </div>
-          {% else %}
-            <div class="notification is-light">No hay usuarios para mostrar.</div>
-          {% endif %}
+                  </article>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="notification is-light">
+                <span class="icon"><i class="fas fa-info-circle"></i></span> No hay usuarios registrados o no tienes permisos para verlos.
+              </div>
+            {% endif %}
+          </div>
         </div>
               {% if filter_estado == 'PUBLICADO' %}
               <!-- Listado de contenidos publicados para las áreas del usuario -->
               <div id="published-listing">
-              <div class="level">
-                <div class="level-left">
-                  <h4 class="title is-5">Contenidos publicados</h4>
-                </div>
-                <div class="level-right">
-                  <form method="get" class="field has-addons" style="margin:0;">
-                    <input type="hidden" name="estado" value="PUBLICADO">
-                    <div class="control">
-                      <div class="select is-small">
-                        <select name="area" onchange="this.form.submit()">
-                          <option value="">Todas las áreas</option>
-                          {% if filter_areas %}
-                            {% for a in filter_areas %}
-                              <option value="{{ a.id }}" {% if selected_area and a.id == selected_area %}selected{% endif %}>{{ a.nombre }}</option>
-                            {% endfor %}
-                          {% endif %}
-                        </select>
-                      </div>
-                    </div>
-                    <div class="control">
-                      <button type="submit" class="button is-small">Filtrar</button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-              <div id="contenidos-list">
-              {% if contenidos %}
-                <div class="content">
-                  {% for c in contenidos %}
-                    <article class="box">
-                      <div class="columns is-mobile is-vcentered">
-                        <div class="column">
-                          <p class="is-size-6 has-text-weight-semibold">{{ c.titulo }}</p>
-                          <p class="is-size-7 has-text-grey">{{ c.breve_descripcion }}</p>
-                          <p class="is-size-7 mt-2">
-                            <strong>Área Origen:</strong> {% if c.area_origen %}{{ c.area_origen.nombre }}{% else %}General{% endif %}
-                            · <strong>Estado:</strong> {{ c.computed_estado }}
-                            · <strong>Creado:</strong> {{ c.fecha_creacion|date:"d-m-Y H:i" }}
-                            · <strong>Tipo:</strong> {{ c.get_tipo_contenido_display }}
-                            {% if c.display_fecha_limite %}
-                              · <strong>Expira:</strong> {{ c.display_fecha_limite|date:"d-m-Y H:i" }}
+                <div class="level">
+                  <div class="level-left">
+                    <h4 class="title is-5">Contenidos publicados</h4>
+                  </div>
+                  <div class="level-right">
+                    <form method="get" class="field has-addons" style="margin:0;">
+                      <input type="hidden" name="estado" value="PUBLICADO">
+                      <div class="control">
+                        <div class="select is-small">
+                          <select name="area" onchange="this.form.submit()">
+                            <option value="">Todas las áreas</option>
+                            {% if filter_areas %}
+                              {% for a in filter_areas %}
+                                <option value="{{ a.id }}" {% if selected_area and a.id == selected_area %}selected{% endif %}>{{ a.nombre }}</option>
+                              {% endfor %}
                             {% endif %}
-                          </p>
+                          </select>
                         </div>
-                        <div class="column is-narrow">
-                          <div class="buttons">
-                            {% if c.can_edit %}
-                              <a class="button is-small is-publicar" href="{% url 'contenido_editar' c.id %}">
-                                <span class="icon"><i class="fas fa-edit"></i></span>
-                                <span>Editar</span>
-                              </a>
-                            {% else %}
-                              <button class="button is-small is-publicar" disabled title="No tiene permiso para editar este contenido">
-                                <span class="icon"><i class="fas fa-edit"></i></span>
-                                <span>Editar</span>
-                              </button>
-                            {% endif %}
-                            {% if selected_area %}
-                              {% if c.has_published_for_selected_area %}
-                                {% with areas_list=c.destinatarios.all %}
-                                  {% comment %}Si hay más de un area, el JS abrirá modal; si sólo una, redirige.{% endcomment %}
-                                  <a class="button is-small is-info btn-view-mural" href="#" data-areas-text="{% for ad in areas_list %}{% if ad.estado == 'PUBLICADO' %}{{ ad.area.id }}|{{ ad.area.nombre|escapejs }}{% if not forloop.last %};{% endif %}{% endif %}{% endfor %}" data-default="{% url 'mural_area' selected_area %}">
-                                    <span class="icon"><i class="fas fa-eye"></i></span>
-                                    <span>Ver en el mural</span>
-                                  </a>
-                                {% endwith %}
+                      </div>
+                      <div class="control">
+                        <button type="submit" class="button is-small">Filtrar</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+                <div id="contenidos-list">
+                {% if contenidos %}
+                  <div class="content">
+                    {% for c in contenidos %}
+                      <article class="box">
+                        <div class="columns is-mobile is-vcentered">
+                          <div class="column">
+                            <p class="is-size-6 has-text-weight-semibold">{{ c.titulo }}</p>
+                            <p class="is-size-7 has-text-grey">{{ c.breve_descripcion }}</p>
+                            <p class="is-size-7 mt-2">
+                              <strong>Área Origen:</strong> {% if c.area_origen %}{{ c.area_origen.nombre }}{% else %}General{% endif %}
+                              · <strong>Estado:</strong> {{ c.computed_estado }}
+                              · <strong>Creado:</strong> {{ c.fecha_creacion|date:"d-m-Y H:i" }}
+                              · <strong>Tipo:</strong> {{ c.get_tipo_contenido_display }}
+                              {% if c.display_fecha_limite %}
+                                · <strong>Expira:</strong> {{ c.display_fecha_limite|date:"d-m-Y H:i" }}
                               {% endif %}
-                            {% else %}
-                              {% if c.has_any_published %}
-                                {% with areas_list=c.destinatarios.all %}
-                                  <a class="button is-small is-info btn-view-mural" href="#" data-areas-text="{% for ad in areas_list %}{% if ad.estado == 'PUBLICADO' %}{{ ad.area.id }}|{{ ad.area.nombre|escapejs }}{% if not forloop.last %};{% endif %}{% endif %}{% endfor %}" data-default="{% if c.area_origen %}{% url 'mural_area' c.area_origen.id %}{% else %}{% url 'mural_principal' %}{% endif %}">
-                                    <span class="icon"><i class="fas fa-eye"></i></span>
-                                    <span>Ver en el mural</span>
-                                  </a>
-                                {% endwith %}
+                            </p>
+                          </div>
+                          <div class="column is-narrow">
+                            <div class="buttons">
+                              {% if c.can_edit %}
+                                <a class="button is-small is-publicar" href="{% url 'contenido_editar' c.id %}">
+                                  <span class="icon"><i class="fas fa-edit"></i></span>
+                                  <span>Editar</span>
+                                </a>
+                              {% else %}
+                                <button class="button is-small is-publicar" disabled title="No tiene permiso para editar este contenido">
+                                  <span class="icon"><i class="fas fa-edit"></i></span>
+                                  <span>Editar</span>
+                                </button>
                               {% endif %}
-                            {% endif %}
-                            <button class="button is-small is-danger btn-delete-content" type="button" data-delete-url="{% url 'contenido_eliminar' c.id %}" data-delete-title="{{ c.titulo|escapejs }}"><span class="icon"><i class="fas fa-trash"></i></span></button>
+                              {% if selected_area %}
+                                {% if c.has_published_for_selected_area %}
+                                  {% with areas_list=c.destinatarios.all %}
+                                    {% comment %}Si hay más de un area, el JS abrirá modal; si sólo una, redirige.{% endcomment %}
+                                    <a class="button is-small is-info btn-view-mural" href="#" data-areas-text="{% for ad in areas_list %}{% if ad.estado == 'PUBLICADO' %}{{ ad.area.id }}|{{ ad.area.nombre|escapejs }}{% if not forloop.last %};{% endif %}{% endif %}{% endfor %}" data-default="/mural/">
+                                      <span class="icon"><i class="fas fa-eye"></i></span>
+                                      <span>Ver en el mural</span>
+                                    </a>
+                                  {% endwith %}
+                                {% endif %}
+                              {% else %}
+                                {% if c.has_any_published %}
+                                  {% with areas_list=c.destinatarios.all %}
+                                    <a class="button is-small is-info btn-view-mural" href="#" data-areas-text="{% for ad in areas_list %}{% if ad.estado == 'PUBLICADO' %}{{ ad.area.id }}|{{ ad.area.nombre|escapejs }}{% if not forloop.last %};{% endif %}{% endif %}{% endfor %}" data-default="/mural/">
+                                      <span class="icon"><i class="fas fa-eye"></i></span>
+                                      <span>Ver en el mural</span>
+                                    </a>
+                                  {% endwith %}
+                                {% endif %}
+                              {% endif %}
+                              <button class="button is-small is-danger btn-delete-content" type="button" data-delete-url="{% url 'contenido_eliminar' c.id %}" data-delete-title="{{ c.titulo|escapejs }}"><span class="icon"><i class="fas fa-trash"></i></span></button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </article>
-                  {% endfor %}
+                      </article>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <div class="notification is-light">No hay contenidos para sus áreas.</div>
+                {% endif %}
                 </div>
-              {% else %}
-                <div class="notification is-light">No hay contenidos para sus áreas.</div>
-              {% endif %}
               </div>
             {% else %}
             <!-- users-section original movido arriba; eliminada copia duplicada -->
@@ -500,43 +518,23 @@
                 </div>
                 {{ form.titulo.errors }}
               </div>
-
-              <!-- Prioridad (banner) -->
-              <div class="field" id="prioridad-wrapper">
-                <label class="label" for="form-prioridad">Prioridad</label>
+              <!-- Descripción Vista Previa (descripcion)-->
+              <div class="field" id="desc-wrapper">
+                <label class="label" for="form-desc">Descripción del Contenido</label>
                 <div class="control">
-                  <label class="checkbox">
-                    {{ form.prioridad }} <span class="ml-2">Destacar como banner</span>
-                  </label>
-                  <p class="help" style="opacity:0.75; margin-top:0.25rem;">Al marcar esta opción, la publicación se mostrará como un banner destacado en el panel superior del mural digital</p>
+                  {{ form.contenido }}
                 </div>
-                {{ form.prioridad.errors }}
-              </div>
-
-              <!-- Descripción Vista Previa (breve_descripcion) - ahora input de una sola línea (oculto por defecto) -->
-              <div class="field" id="breve-desc-wrapper" style="display:none;">
-                <label class="label" for="form-desc">Descripción Vista Previa</label>
-                <div class="control">
-                  {{ form.breve_descripcion }}
-                </div>
-                {{ form.breve_descripcion.errors }}
               </div>
 
               <div class="columns form-grid">
                 <!-- Left column: Color arriba, Tipo Contenido abajo -->
                 <div class="column is-half">
                   <!-- Color de Tarjetas (campo superior izquierdo) -->
-                  <div class="field">
-                    <label class="label" for="form-color">Color de Tarjetas</label>
+                  <div class="field" id="color-wrapper" style="display:none;">
+                    <label class="label" for="form-color">Color de Fondo (Banner)</label>
                     <div class="control">
                       <div class="select is-fullwidth">
-                        <select id="form-color" name="color">
-                          <option value="blanco">Por defecto</option>
-                          <option value="verde">Verde Claro</option>
-                          <option value="amarillo">Amarillo Claro</option>
-                          <option value="rojo">Rojo Claro</option>
-                          <option value="azul">Azul Claro</option>
-                        </select>
+                        {{ form.color }}
                       </div>
                     </div>
                   </div>
@@ -588,27 +586,6 @@
 
               {# Campo 'Contenido Completo' eliminado: la información detallada residirá en los archivos adjuntos. #}
 
-              <!-- Select Comuna -->
-              <div class="field">
-                <label class="label" for="form-comuna">Comuna</label>
-                <div class="control">
-                  <div class="select is-fullwidth">
-                    <select id="form-comuna" name="comuna">
-                      <option value="">Seleccionar comuna...</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Select Sedes (múltiple, habilitado tras elegir comuna) -->
-              <div class="field">
-                <label class="label" for="form-sedes">Sedes</label>
-                <div class="control">
-                  <select id="form-sedes" name="sedes" multiple class="select is-multiple is-fullwidth" disabled></select>
-                </div>
-                <p id="sedes-empty" class="help is-size-7 has-text-grey" style="display:none; margin-top:0.5rem;">No hay sedes disponibles para la comuna seleccionada.</p>
-              </div>
-
               <!-- Selección de Niveles y Destinatarios -->
               <div class="field">
                 <label class="label">Destinatarios</label>
@@ -633,6 +610,10 @@
               <!-- Subir Archivo -->
               <div class="field">
                 <label class="label">Subir Archivo Multimedia (Opcional)</label>
+                <div id="alerta-file-warning" class="notification is-warning is-light is-hidden mt-2 mb-2" style="padding: 0.75rem; font-size: 0.85rem;">
+                  <span class="icon"><i class="fas fa-exclamation-triangle"></i></span>
+                  <strong>Atención:</strong> En modo <b>Alerta</b>, el sistema solo permite adjuntar imágenes (JPG, PNG, WEBP). Los archivos PDF o documentos no serán procesados.
+                </div>
                 <div class="control">
                   <!-- Contenedor donde se pueden añadir varios inputs -->
                   <div id="file-inputs">
@@ -658,9 +639,6 @@
               </div>
 
               <!-- Botones de Acción -->
-              <hr>
-              <!-- valor por defecto para el campo 'accion' (se sobrescribe por el botón clickeado) -->
-              <input type="hidden" name="accion" id="form-accion" value="borrador">
 
               <div class="field is-grouped is-grouped-right">
                 <div class="control">
@@ -708,53 +686,56 @@
               <!-- 2. Contenido de la vista previa (oculto por defecto) -->
               <div id="preview-content" class="is-hidden">
                 
-                <!-- Parte 1: Tarjeta (Como se ve en el mural) -->
                 <h4 class="subtitle is-6 preview-label">Como se verá en el mural</h4>
 
-                <div class="preview-card-wrapper">
-                  <div class="card mural-card mb-4" id="preview-card">
-                    <header class="card-header">
-                      <p class="card-header-title is-size-6" id="preview-card-titulo">Título</p>
-                      <div class="card-header-icon" style="align-items:center;">
-                        <span class="tag is-light is-small" id="preview-card-type"><span class="icon"><i class="fas fa-file"></i></span> <span class="type-label">Tipo</span></span>
-                      </div>
-                    </header>
-                    <div class="card-content modal-bg">
-                      <p class="is-size-7 has-text-grey" id="preview-card-date">Fecha</p>
-                      <p class="mt-2" id="preview-card-desc">Breve descripcion...</p>
-                      <div class="card-attachments" style="display:none;" id="preview-card-attachments"></div>
-                      <div class="card-full-body" style="display:none;" id="preview-card-fullbody"></div>
+                <div class="preview-card-wrapper mb-5">
+                  <div class="card" id="preview-card" style="border: 1px solid #005c3c; box-shadow: none; border-radius: 4px; display: inline-block; padding: 1.25rem 1.5rem; min-width: 280px; background: #ffffff;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <p class="is-size-5 has-text-weight-bold" id="preview-card-titulo" style="margin: 0; color: #0b1220; line-height: 1.2;">Título</p>
+                      <span class="icon is-medium has-background-light" id="preview-card-icon" style="border-radius: 50%; color: #6b7280; margin-left: 1.5rem; width: 2.5rem; height: 2.5rem;">
+                        <i class="fas fa-thumbtack"></i>
+                      </span>
                     </div>
                   </div>
                 </div>
 
                 <hr>
 
-                <!-- Parte 2: Detalle (Como se ve en el modal) -->
                 <p class="mb-2"><span class="modal-badge">Contenido del modal</span></p>
-                <h4 class="title is-5 mt-5" id="preview-full-titulo">Título</h4>
+                <h4 class="title is-5 mt-4" id="preview-full-titulo">Título</h4>
                 
-                <!-- Lista de archivos: archivos nuevos seleccionados y archivos existentes (edición) -->
-                <div id="preview-existing-files" class="mb-3">
+                <div class="content mt-3" id="preview-full-contenido" style="white-space: pre-wrap; font-size: 0.95rem; color: #4a4a4a;"></div>
+                
+                <div id="preview-existing-files" class="mt-4 mb-3">
                   {% if contenido and contenido.archivos.exists %}
-                    <p class="is-size-7">Archivos ya adjuntos:</p>
-                    <ul class="ml-4" style="list-style-type: disc;" id="existing-files-list">
+                    <p class="is-size-7 has-text-weight-bold mb-2">Archivos ya adjuntos:</p>
+                    <ul style="list-style-type: none; margin-left: 0;" id="existing-files-list">
                       {% for a in contenido.archivos.all %}
-                        <li data-preview-url="{{ a.archivo.url }}" data-archivo-id="{{ a.id }}" class="existing-file">
-                          <span class="existing-file-name">{{ a.archivo.name }}</span>
-                          <button type="button" class="button is-small is-danger existing-file-remove" style="margin-left:0.5rem;">Eliminar</button>
+                        <li class="existing-file box p-2 mb-2" style="background-color: #f8f9fa;">
+                          <div class="is-flex is-justify-content-space-between is-align-items-center">
+                            <a href="{{ a.ruta_archivo.url }}" target="_blank" class="is-size-7 has-text-link">
+                              <span class="icon"><i class="fas fa-external-link-alt"></i></span> Ver archivo adjunto
+                            </a>
+                            <button type="button" class="button is-small is-danger is-light btn-remove-existing" data-id="{{ a.id }}" title="Eliminar archivo">
+                              <span class="icon"><i class="fas fa-trash"></i></span>
+                            </button>
+                          </div>
+                          {% if ".jpg" in a.ruta_archivo.url|lower or ".png" in a.ruta_archivo.url|lower or ".jpeg" in a.ruta_archivo.url|lower or ".gif" in a.ruta_archivo.url|lower or ".webp" in a.ruta_archivo.url|lower %}
+                            <div class="mt-2 has-text-centered">
+                              <img src="{{ a.ruta_archivo.url }}" alt="Vista previa" style="max-height: 120px; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                            </div>
+                          {% endif %}
                         </li>
                       {% endfor %}
                     </ul>
                   {% endif %}
                 </div>
 
-                  <ul id="preview-full-archivos" class="ml-4" style="list-style-type: disc;">
-                    <li class="has-text-grey-light">No hay archivos adjuntos.</li>
-                  </ul>
+                <ul id="preview-full-archivos" class="ml-4" style="list-style-type: disc;">
+                  <li class="has-text-grey-light">No hay archivos adjuntos.</li>
+                </ul>
 
-                  <!-- Contenedor para mostrar preview del primer archivo (existente o recién subido) -->
-                  <div id="preview-file-view" class="mt-3"></div>
+                <div id="preview-file-view" class="mt-3"></div>
 
               </div>
 
@@ -766,6 +747,11 @@
       </div> <!-- Fin .columns -->
     </div>
   </section>
+
+  <!-- 
+    Modales 
+  -->
+
 
   <!-- Confirm delete modal (contenidos) -->
   <div id="confirm-delete-modal" class="modal">
@@ -781,6 +767,22 @@
       <footer class="modal-card-foot">
         <button class="button is-danger" id="confirm-delete-yes">Eliminar</button>
         <button class="button" id="confirm-delete-no">Cancelar</button>
+      </footer>
+    </div>
+  </div>
+  <div id="confirm-delete-user-modal" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+      <header class="modal-card-head">
+        <p class="modal-card-title">Confirmar eliminación</p>
+        <button class="delete" aria-label="close" id="confirm-delete-user-close"></button>
+      </header>
+      <section class="modal-card-body">
+        <p>¿Estás seguro de que deseas eliminar al usuario <strong id="confirm-delete-user-name"></strong>? Esta acción no se puede deshacer.</p>
+      </section>
+      <footer class="modal-card-foot">
+        <button class="button is-danger" id="confirm-delete-user-yes">Eliminar</button>
+        <button class="button" id="confirm-delete-user-no">Cancelar</button>
       </footer>
     </div>
   </div>
@@ -879,80 +881,44 @@
     document.addEventListener('DOMContentLoaded', () => {
       
       // ==========================================
-      // 1. HELPERS & UTILS
+      // 1. UTILS Y CONFIGURACIÓN
       // ==========================================
-      const safeParseJSON = (id, fallback) => {
-          const el = document.getElementById(id);
-          if (!el || !el.textContent) return fallback;
-          try { return JSON.parse(el.textContent); } 
-          catch (e) { return fallback; }
-      };
-
       const hideElement = (el) => { if (el) el.style.display = 'none'; };
       const showElement = (el) => { if (el) el.style.display = ''; };
 
-      // ==========================================
-      // 2. ESTADO Y CONFIGURACIÓN DEL SERVIDOR
-      // ==========================================
-      const allowedExtensions = safeParseJSON('allowedExt', []);
-      const maxSizeMb = safeParseJSON('maxSizeMb', 20);
-      const sizeByType = safeParseJSON('sizeByType', {});
-      const acceptStr = allowedExtensions.length > 0 ? allowedExtensions.map(e => `.${e}`).join(',') : '';
-
-      const _userFlags = safeParseJSON('current-user-flags', {});
-      const currentIsSuper = !!_userFlags.is_super;
-      const currentIsStaff = !!_userFlags.is_staff;
-
-      // Rutas Base (Asignadas vía template)
       const baseGestUrl = '{% url "contenidos_mis_areas" %}';
-      const baseMuralAreaUrl = '{% url "mural_area" 0 %}';
-
-      // Diccionarios geográficos
-      const sedesByComuna = safeParseJSON('sedesByComuna', {});
-      const comunasList = safeParseJSON('comunasList', []);
-      const areasBySede = safeParseJSON('areasBySede', {});
-      const areasByComuna = safeParseJSON('areasByComuna', {});
+      const baseMuralAreaUrl = '/mural/0/'; 
+      const acceptStr = '.jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.txt,.csv,.mp4,.mp3';
 
       // ==========================================
-      // 3. ELEMENTOS DEL DOM
+      // 2. ELEMENTOS DEL DOM
       // ==========================================
       const UI = {
-          // Formularios e Inputs
           form: document.getElementById('content-form'),
           tituloInput: document.getElementById('form-titulo'),
           descInput: document.getElementById('form-desc'),
           tipoInput: document.getElementById('form-tipo'),
           tipoOtroInput: document.getElementById('form-tipo-otro'),
           tipoOtroWrapper: document.getElementById('tipo-otro-wrapper'),
-          fechaInput: document.getElementById('form-fecha'),
-          areaInput: document.getElementById('form-area'),
           colorInput: document.getElementById('form-color'),
-          contenidoInput: document.getElementById('form-contenido'),
-          prioridadCheckbox: document.getElementById('form-prioridad'),
-          breveDescWrapper: document.getElementById('breve-desc-wrapper'),
+          colorWrapper: document.getElementById('color-wrapper'),
+          destSelect: document.getElementById('form-destinatarios'),
           
-          // Archivos
           fileInputsContainer: document.getElementById('file-inputs'),
           addFileBtn: document.getElementById('add-file-btn'),
-          fileErrorsContainer: document.getElementById('file-errors'),
-          existingFilesList: document.getElementById('existing-files-list'),
           
-          // Vista Previa (Mural/Cards)
           placeholder: document.getElementById('preview-placeholder'),
           previewContent: document.getElementById('preview-content'),
           card: document.getElementById('preview-card'),
           cardTitulo: document.getElementById('preview-card-titulo'),
+          cardIcon: document.getElementById('preview-card-icon'), 
           cardDate: document.getElementById('preview-card-date'),
           cardDesc: document.getElementById('preview-card-desc'),
           cardType: document.getElementById('preview-card-type'),
-          cardFullBody: document.getElementById('preview-card-fullbody'),
           fullTitulo: document.getElementById('preview-full-titulo'),
           fullContenido: document.getElementById('preview-full-contenido'),
           fullArchivos: document.getElementById('preview-full-archivos'),
-          previewFileView: document.getElementById('preview-file-view'),
-          initialColorValue: document.getElementById('initial-contenido-data')?.dataset.color || '',
 
-          // Paneles y Botones de Navegación
           leftColumn: document.getElementById('left-column'),
           rightColumn: document.getElementById('right-column'),
           profilePanel: document.getElementById('profile-panel'),
@@ -963,15 +929,26 @@
           btnContenido: document.getElementById('btn-contenido-publicado'),
           btnMiPerfil: document.getElementById('btn-mi-perfil'),
           btnGestUsuarios: document.getElementById('btn-gest-usuarios'),
-
-          // Selectores en Cascada (Geografía)
-          comunaSelect: document.getElementById('form-comuna'),
-          sedesSelect: document.getElementById('form-sedes'),
-          destSelect: document.getElementById('form-destinatarios')
       };
 
       // ==========================================
-      // 4. MÓDULO: NAVEGACIÓN Y PANELES
+      // 3. INICIALIZAR CHOICES.JS
+      // ==========================================
+      if (UI.destSelect && window.Choices) {
+          const parent = UI.destSelect.parentElement;
+          if (parent && parent.classList.contains('select')) {
+              parent.classList.remove('select', 'is-multiple', 'is-fullwidth');
+          }
+          new Choices(UI.destSelect, {
+              removeItemButton: true,
+              searchPlaceholderValue: 'Buscar área o carrera...',
+              itemSelectText: 'Presione para seleccionar',
+              noResultsText: 'No se encontraron áreas'
+          });
+      }
+
+      // ==========================================
+      // 4. MÓDULO: NAVEGACIÓN
       // ==========================================
       const Navigation = {
           setActiveBtn(activeBtn) {
@@ -986,7 +963,6 @@
               hideElement(UI.publishedListing);
               UI.profilePanel?.classList.add('is-hidden');
               UI.usersSection?.classList.add('is-hidden');
-              
               if (UI.leftColumn) UI.leftColumn.className = UI.leftColumn.className.replace(/\bis-12\b|\bis-7\b/g, '').trim();
 
               switch (name) {
@@ -1005,152 +981,59 @@
                       hideElement(UI.rightColumn);
                       UI.profilePanel?.classList.remove('is-hidden');
                       break;
+                  // ¡AQUÍ ESTÁ EL CÓDIGO FALTANTE PARA USUARIOS!
                   case 'users':
                       if (UI.leftColumn) UI.leftColumn.className = 'column is-12';
                       hideElement(UI.rightColumn);
                       UI.usersSection?.classList.remove('is-hidden');
                       break;
               }
-          },
-
-          init() {
-              const h = location.hash;
-                if (h === '#content-form' && UI.btnCrear) {
-                  // Si el formulario no está presente en el DOM (p. ej. estamos en la vista 'PUBLICADO'),
-                  // recargar la página sin el parámetro de estado para que el servidor renderice el formulario.
-                  if (!UI.form) {
-                    window.location.href = baseGestUrl + '#content-form';
-                    return;
-                  }
-                  this.setActiveBtn(UI.btnCrear);
-                  this.showPanel('create');
-              } else if (h === '#users' && UI.btnGestUsuarios) {
-                  if (!UI.usersSection) window.location.href = baseGestUrl + '#users';
-                  else { this.setActiveBtn(UI.btnGestUsuarios); this.showPanel('users'); }
-              } else if (h === '#profile' && UI.btnMiPerfil) {
-                  this.setActiveBtn(UI.btnMiPerfil);
-                  this.showPanel('profile');
-              } else if (h === '#list' || (UI.btnContenido?.classList.contains('is-active-green'))) {
-                  this.setActiveBtn(UI.btnContenido);
-                  this.showPanel('list');
-              } else {
-                  this.setActiveBtn(UI.btnCrear);
-                  this.showPanel('create');
-              }
           }
       };
 
       // ==========================================
-      // 5. MÓDULO: ARCHIVOS Y VALIDACIÓN
+      // 5. MÓDULO: ARCHIVOS
       // ==========================================
       const FileManager = {
-          getInputs() {
-              return UI.fileInputsContainer ? Array.from(UI.fileInputsContainer.querySelectorAll('input[name="archivo_adjunto"]')) : [];
-          },
-          
-          getAllFiles() {
-              return this.getInputs().flatMap(input => Array.from(input.files));
-          },
-
-          detectCategory(file) {
-              const ext = (file.name || '').split('.').pop().toLowerCase();
-              const ctype = (file.type || '').toLowerCase();
-              if (ctype.startsWith('image/') || ['jpg','jpeg','png','gif','webp'].includes(ext)) return 'image';
-              if (ctype.startsWith('video/') || ['mp4','webm','mov','avi'].includes(ext)) return 'video';
-              if (ctype.startsWith('audio/') || ['mp3','wav','ogg'].includes(ext)) return 'audio';
-              if (ext === 'pdf' || ['doc','docx','xls','xlsx','ppt','txt','csv'].includes(ext)) return 'document';
-              return null;
-          },
-
-          validate(files) {
-              const errors = [];
-              files.forEach((file, idx) => {
-                  const name = file.name || `archivo_${idx}`;
-                  const ext = name.split('.').pop().toLowerCase();
-
-                  if (allowedExtensions.length > 0 && !allowedExtensions.includes(ext)) {
-                      errors.push(`Extensión no permitida: ${name}`);
-                      return;
-                  }
-
-                  const category = this.detectCategory(file);
-                  const maxMb = (category && sizeByType[category]) ? sizeByType[category] : maxSizeMb;
-                  if (file.size && maxMb && file.size > maxMb * 1024 * 1024) {
-                      errors.push(`${name} es demasiado grande (${(file.size/1024/1024).toFixed(2)} MB). Máximo: ${maxMb} MB`);
-                  }
-              });
-              return errors;
-          },
-
-          renderErrors(errors) {
-              if (!UI.fileErrorsContainer) return;
-              UI.fileErrorsContainer.innerHTML = '';
-              if (errors.length === 0) return;
-
-              const box = document.createElement('div');
-              box.className = 'notification is-danger is-light';
-              const ul = document.createElement('ul');
-              errors.forEach(e => {
-                  const li = document.createElement('li'); 
-                  li.textContent = e; 
-                  ul.appendChild(li);
-              });
-              box.appendChild(ul);
-              UI.fileErrorsContainer.appendChild(box);
-          },
-
           createBlock() {
               const wrapper = document.createElement('div');
-              wrapper.className = 'file has-name is-fullwidth file-block';
+              wrapper.className = 'file has-name is-fullwidth file-block mt-2';
               wrapper.innerHTML = `
                   <label class="file-label">
-                      <input class="file-input" type="file" name="archivo_adjunto" accept="${acceptStr}">
-                      <span class="file-cta">
-                          <span class="file-icon"><i class="fas fa-upload"></i></span>
-                          <span class="file-label">Seleccionar archivo…</span>
-                      </span>
+                    <input class="file-input" type="file" name="archivo_adjunto" accept="${(UI.tipoInput && UI.tipoInput.value === 'ALERTA') ? '.jpg,.jpeg,.png,.webp' : acceptStr}">                      
+                    <span class="file-cta"><span class="file-icon"><i class="fas fa-upload"></i></span><span class="file-label">Seleccionar archivo…</span></span>
                       <span class="file-name file-name-display">No file chosen</span>
                   </label>
-                  <button type="button" class="button is-small is-danger" style="margin-left: 0.5rem;">
-                      <span class="icon"><i class="fas fa-trash"></i></span>
-                  </button>
+                  <button type="button" class="button is-small is-danger" style="margin-left: 0.5rem;"><span class="icon"><i class="fas fa-trash"></i></span></button>
               `;
-
               const input = wrapper.querySelector('input');
               const fname = wrapper.querySelector('.file-name');
               const remBtn = wrapper.querySelector('button');
 
               input.addEventListener('change', () => {
-                  fname.textContent = input.files.length > 1 ? `${input.files.length} archivos` : (input.files[0]?.name || 'No file chosen');
+                  fname.textContent = input.files[0]?.name || 'No file chosen';
                   PreviewManager.update();
               });
 
-              remBtn.addEventListener('click', () => {
-                  wrapper.remove();
-                  PreviewManager.update();
-              });
-
+              remBtn.addEventListener('click', () => { wrapper.remove(); PreviewManager.update(); });
               return wrapper;
           }
       };
 
       // ==========================================
-      // 6. MÓDULO: VISTA PREVIA (PREVIEW)
+      // 6. MÓDULO: VISTA PREVIA
       // ==========================================
       const PreviewManager = {
           update() {
               if (!UI.placeholder || !UI.previewContent) return;
 
               const titulo = UI.tituloInput?.value.trim() || '';
-              // Para el banner, usamos la breve descripción
               const desc = UI.descInput?.value.trim() || '';
-              const colorValue = UI.colorInput?.value || UI.initialColorValue || 'default';
-              const files = FileManager.getAllFiles();
+              const tipoValue = UI.tipoInput?.value || 'CARD';
+              const colorValue = UI.colorInput?.value || '#005c3c';
+              const files = UI.fileInputsContainer ? Array.from(UI.fileInputsContainer.querySelectorAll('input[type="file"]')).flatMap(i => Array.from(i.files)) : [];
               
-              // Se eliminó contenidoInput, ahora la vista depende de Título, Desc o Archivos
-              const hasContent = titulo || desc || files.length > 0;
-
-              if (hasContent) {
+              if (titulo || desc || files.length > 0) {
                   UI.placeholder.classList.add('is-hidden');
                   UI.previewContent.classList.remove('is-hidden');
               } else {
@@ -1159,426 +1042,407 @@
                   return;
               }
 
-              // --- 1. Actualizar Textos de la Card Principal ---
               if (UI.cardTitulo) UI.cardTitulo.textContent = titulo || 'Título';
-              if (UI.cardDate) UI.cardDate.textContent = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long' });
-              if (UI.cardDesc) UI.cardDesc.textContent = desc || 'Breve descripción...';
-              
-              // Actualizar Tipo de Contenido
-              if (UI.cardType) {
-                  const tipoText = UI.tipoInput?.value === 'OTRO' ? UI.tipoOtroInput?.value.trim() : UI.tipoInput?.options[UI.tipoInput.selectedIndex]?.text;
-                  const label = UI.cardType.querySelector('.type-label');
-                  if (label) label.textContent = tipoText || 'Tipo';
-              }
-
-              // Colores de la Card
-              const colorMap = {
-                  'verde': 'rgba(40,167,69,0.25)', 'amarillo': 'rgba(255,193,7,0.25)',
-                  'rojo': 'rgba(220,53,69,0.25)', 'azul': 'rgba(23,162,184,0.25)',
-                  'blanco': 'transparent', 'default': 'transparent'
-              };
-              if (UI.card) {
-                  UI.card.className = 'card mural-card mb-4';
-                  UI.card.style.backgroundColor = colorMap[colorValue] || colorMap['default'];
-              }
-
-              // --- 2. Actualizar Textos del Modal (Preview Full) ---
               if (UI.fullTitulo) UI.fullTitulo.textContent = titulo || 'Título';
-              
-              // (ELIMINADO: fullContenido y cardFullBody ya que "Contenido Completo" no existe)
-              if (UI.fullContenido) {
-                  UI.fullContenido.innerHTML = ''; // Limpiamos el texto antiguo para evitar redundancia
+              if (UI.fullContenido) UI.fullContenido.textContent = desc || 'Detalle del contenido...';
+
+              if (tipoValue === 'BANNER') {
+                  showElement(UI.colorWrapper);
+                  if(UI.card) UI.card.style.backgroundColor = colorValue;
+                  if(UI.cardTitulo) UI.cardTitulo.style.color = '#ffffff';
+                  if(UI.cardIcon) UI.cardIcon.innerHTML = '<i class="fas fa-image"></i>';
+              } 
+              else if (tipoValue === 'ALERTA') {
+                  hideElement(UI.colorWrapper);
+                  if(UI.card) UI.card.style.backgroundColor = '#1e824c'; 
+                  if(UI.cardTitulo) UI.cardTitulo.style.color = '#ffffff';
+                  if(UI.cardIcon) UI.cardIcon.innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i>';
+              } 
+              else { 
+                  hideElement(UI.colorWrapper);
+                  if(UI.card) UI.card.style.backgroundColor = '#D0F0C0'; 
+                  if(UI.cardTitulo) UI.cardTitulo.style.color = '#0b1220';
+                  if(UI.cardIcon) UI.cardIcon.innerHTML = '<i class="fas fa-thumbtack"></i>';
               }
 
-              // --- 3. Actualizar Lista y Preview de Archivos ---
-              if (UI.fullArchivos) {
-                  UI.fullArchivos.innerHTML = '';
-                  if (files.length > 0) {
-                      // Lista simple de nombres (opcional, si quieres mantenerla arriba de la vista previa)
-                      files.forEach(f => {
-                          const li = document.createElement('li'); 
-                          li.textContent = f.name; 
-                          UI.fullArchivos.appendChild(li);
-                      });
-                      this.showFiles(files);
-                  } else {
-                      UI.fullArchivos.innerHTML = '<li class="has-text-grey-light">No hay archivos adjuntos.</li>';
-                      const existingUrl = UI.existingFilesList?.querySelector('.existing-file:not(.marked-for-remove)')?.dataset.previewUrl;
-                      existingUrl ? this.showUrl(existingUrl) : (UI.previewFileView.innerHTML = '');
-                  }
-              }
-          },
+              // ==========================================
+              // GESTIÓN DE ARCHIVOS NUEVOS Y MINIATURAS
+              // ==========================================
+              const previewFileView = document.getElementById('preview-file-view');
+              if (UI.fullArchivos) UI.fullArchivos.innerHTML = '';
+              if (previewFileView) previewFileView.innerHTML = '';
 
-          showUrl(url) {
-              if (!UI.previewFileView) return;
-              const lower = url.split('?')[0].toLowerCase();
-              if (lower.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
-                  UI.previewFileView.innerHTML = `<img src="${url}" style="max-width:100%; max-height:320px; display:block; margin:0 auto;" />`;
-              } else if (lower.match(/\.pdf$/)) {
-                  UI.previewFileView.innerHTML = `<embed src="${url}" type="application/pdf" style="width:100%; height:420px; border:0;" />`;
-              } else {
-                  UI.previewFileView.innerHTML = `<p class="is-size-7 has-text-grey">No se puede previsualizar: <a href="${url}">Descargar</a></p>`;
-              }
-          },
-
-          showFiles(fileList) {
-              if (!UI.previewFileView) return;
-              
-              // Limpiamos la vista previa. 
-              // IMPORTANTE: Ya no creamos elementos h4, h5 ni 'Contenido del modal' aquí.
-              // Solo inyectamos los elementos visuales (imágenes, pdfs).
-              UI.previewFileView.innerHTML = ''; 
-              const objectUrls = [];
-              const attList = document.createElement('div');
-              
-              attList.style.display = 'flex';
-              attList.style.flexDirection = 'column';
-              attList.style.gap = '1rem'; // Más espacio entre archivos
-
-              fileList.forEach(f => {
-                  const name = f.name || 'archivo';
-                  const ext = (name.split('.').pop() || '').toLowerCase();
-                  const type = (f.type || '').toLowerCase();
-                  const url = URL.createObjectURL(f);
-                  objectUrls.push(url);
-
-                  const wrap = document.createElement('div');
-                  wrap.style.display = 'flex';
-                  wrap.style.flexDirection = 'column';
-
-                  if (type.startsWith('image/')) {
-                      const img = document.createElement('img');
-                      img.src = url;
-                      img.style.maxWidth = '100%';
-                      img.style.maxHeight = '300px'; // Un poco más grande para mejor vista
-                      img.style.display = 'block';
-                      img.style.margin = '0 auto';
-                      img.style.borderRadius = '6px';
-                      wrap.appendChild(img);
-                      
-                  } else if (type === 'application/pdf' || ext === 'pdf') {
-                      const iframe = document.createElement('iframe');
-                      iframe.src = url + (url.includes('#') ? '&toolbar=0' : '#toolbar=0');
-                      iframe.style.width = '100%';
-                      iframe.style.height = '350px';
-                      iframe.style.border = '1px solid #eaeaea';
-                      iframe.style.borderRadius = '6px';
-                      wrap.appendChild(iframe);
-                      
-                      const link = document.createElement('a'); 
-                      link.href = url; 
-                      link.target = '_blank';
-                      link.textContent = `Ver archivo: ${name}`; 
-                      link.style.alignSelf = 'center'; 
-                      link.style.marginTop = '0.5rem';
-                      wrap.appendChild(link);
-                      
-                  } else {
-                      // Otros documentos
-                      const info = document.createElement('div');
-                      info.className = 'notification is-light';
-                      info.style.display = 'flex';
-                      info.style.alignItems = 'center';
-                      info.style.gap = '0.5rem';
-                      info.innerHTML = `<span class="icon"><i class="fas fa-file-alt"></i></span> <span>${name}</span> <a href="${url}" target="_blank" class="button is-small is-link is-outlined ml-auto">Ver</a>`;
-                      wrap.appendChild(info);
+              files.forEach(f => {
+                  // Agregar nombre a la lista
+                  if (UI.fullArchivos) {
+                      const li = document.createElement('li'); 
+                      li.className = 'is-size-7 mb-1';
+                      li.innerHTML = `<span class="icon"><i class="fas fa-file"></i></span> ${f.name}`;
+                      UI.fullArchivos.appendChild(li);
                   }
 
-                  attList.appendChild(wrap);
+                  // Crear miniatura para la vista previa
+                  if (previewFileView) {
+                      const url = URL.createObjectURL(f);
+                      if (f.type.startsWith('image/')) {
+                          const img = document.createElement('img');
+                          img.src = url;
+                          img.style.maxHeight = '150px';
+                          img.style.width = 'auto';
+                          img.style.marginTop = '10px';
+                          img.style.borderRadius = '4px';
+                          img.style.display = 'block';
+                          img.style.boxShadow = '0 2px 5px rgba(0,0,0,0.1)';
+                          previewFileView.appendChild(img);
+                      } else {
+                          const link = document.createElement('a');
+                          link.href = url;
+                          link.textContent = 'Previsualizar ' + f.name;
+                          link.target = '_blank';
+                          link.className = 'button is-small is-link is-light mt-2 is-fullwidth';
+                          previewFileView.appendChild(link);
+                      }
+                  }
               });
-
-              UI.previewFileView.appendChild(attList);
-
-              // Liberar object URLs después de un tiempo
-              setTimeout(() => objectUrls.forEach(u => URL.revokeObjectURL(u)), 30000);
           }
       };
-
+     // ==========================================
+      // 7. MÓDULO: GESTIÓN DE USUARIOS (MODAL)
       // ==========================================
-      // 7. MÓDULO: GEOGRAFÍA (Sedes, Comunas, Áreas)
-      // ==========================================
-      let sedesChoices = null;
-      let destChoices = null;
+      const UserModal = {
+          modal: document.getElementById('user-modal'),
+          form: document.getElementById('user-form'),
+          title: document.getElementById('user-modal-title'),
+          pkInput: document.getElementById('user-pk'),
+          firstName: document.getElementById('user-first-name'),
+          lastName: document.getElementById('user-last-name'),
+          email: document.getElementById('user-email'),
+          role: document.getElementById('user-role'),
+          areasSelect: document.getElementById('user-areas'),
+          btnSave: document.getElementById('user-modal-save'),
+          choicesInstance: null, // Guardaremos la instancia de Choices.js aquí
 
-      const LocationManager = {
-          masterAreas: [], // <-- Aquí guardaremos la copia original de áreas
-
+          open(isEdit, data = {}) {
+              if (!this.modal) return;
+              this.title.textContent = isEdit ? 'Editar Usuario' : 'Nuevo Usuario';
+              this.pkInput.value = data.id || '';
+              this.firstName.value = data.firstName || '';
+              this.lastName.value = data.lastName || '';
+              this.email.value = data.email || '';
+              this.role.value = data.role || '';
+              
+              // Actualizar selecciones en Choices.js
+              if (this.choicesInstance) {
+                  this.choicesInstance.removeActiveItems(); // Limpiar selecciones anteriores
+                  if (data.areas && data.areas.length > 0) {
+                      this.choicesInstance.setChoiceByValue(data.areas); // Seleccionar las áreas del usuario
+                  }
+              }
+              
+              const passHelp = document.getElementById('user-password-help');
+              if(passHelp) passHelp.style.display = isEdit ? 'block' : 'none';
+              
+              this.modal.classList.add('is-active');
+          },
+          
+          close() {
+              if (!this.modal) return;
+              this.modal.classList.remove('is-active');
+              this.form.reset();
+              if (this.choicesInstance) {
+                  this.choicesInstance.removeActiveItems(); // Limpiar al cerrar
+              }
+          },
+          
           init() {
-              // 0. Guardar copia de las áreas antes de que Choices.js modifique el HTML
-              if (UI.destSelect) {
-                  this.masterAreas = Array.from(UI.destSelect.options)
-                      .filter(o => o.value !== "")
-                      .map(o => ({ value: String(o.value), label: o.text }));
-              }
-
-              // 1. Llenar Comunas
-              let effectiveComunas;
-              if (Array.isArray(comunasList) && comunasList.length > 0) {
-                effectiveComunas = comunasList;
-              } else if (comunasList && typeof comunasList === 'object' && Object.keys(comunasList).length > 0) {
-                const vals = Object.values(comunasList);
-                effectiveComunas = vals.every(v => typeof v === 'string') ? vals : Object.keys(comunasList);
-              } else {
-                effectiveComunas = Object.keys(sedesByComuna || {});
-              }
-
-              if (UI.comunaSelect && Array.isArray(effectiveComunas) && effectiveComunas.length > 0) {
-                effectiveComunas.forEach(c => {
-                  const opt = document.createElement('option');
-                  opt.value = c; opt.textContent = c;
-                  UI.comunaSelect.appendChild(opt);
-                });
-              }
-
-              // 2. Iniciar Choices para Destinatarios (Áreas)
-              if (UI.destSelect && window.Choices) {
-                  destChoices = new Choices(UI.destSelect, { removeItemButton: true, shouldSort: false, placeholderValue: 'Seleccione...' });
-                  destChoices.disable(); // Inicia bloqueado
-              }
-
-              // 3. Iniciar Choices para Sedes
-              if (UI.sedesSelect && window.Choices) {
-                sedesChoices = new Choices(UI.sedesSelect, { removeItemButton: true, shouldSort: false, placeholderValue: 'Seleccione sedes...' });
-                try { sedesChoices.disable(); } catch(e) {}
-              }
-
-              // 4. Disparadores de Eventos
-              UI.comunaSelect?.addEventListener('change', (e) => this.populateSedes(e.target.value));
-              
-              UI.sedesSelect?.addEventListener('change', () => this.updateDestinatarios());
-              UI.sedesSelect?.addEventListener('removeItem', () => this.updateDestinatarios());
-              UI.sedesSelect?.addEventListener('addItem', () => this.updateDestinatarios());
-
-              // Carga inicial
-              if (UI.comunaSelect?.value) {
-                  this.populateSedes(UI.comunaSelect.value);
-                  setTimeout(() => this.updateDestinatarios(), 100);
-              }
-          },
-
-          populateSedes(comuna) {
-              if (!UI.sedesSelect) return;
-              const items = (sedesByComuna[comuna] || []).map(s => ({ value: String(s.id), label: s.name }));
-
-              if (window.Choices && sedesChoices) {
-                  sedesChoices.clearStore();
-                  sedesChoices.setChoices(items, 'value', 'label', true);
-                  items.length > 0 ? sedesChoices.enable() : sedesChoices.disable();
-              } else {
-                  UI.sedesSelect.innerHTML = '';
-                  items.forEach(it => {
-                      const o = document.createElement('option'); 
-                      o.value = it.value; o.textContent = it.label; 
-                      UI.sedesSelect.appendChild(o);
+              // Inicializar Choices.js para el select de áreas del modal de usuarios
+              if (this.areasSelect && window.Choices) {
+                  this.choicesInstance = new Choices(this.areasSelect, {
+                      removeItemButton: true,
+                      searchPlaceholderValue: 'Buscar áreas...',
+                      noResultsText: 'No se encontraron áreas',
+                      itemSelectText: 'Presione para seleccionar'
                   });
-                  UI.sedesSelect.disabled = items.length === 0;
               }
 
-              this.updateDestinatarios();
-          },
-
-          updateDestinatarios() {
-              if (!UI.destSelect) return;
-
-              let selectedSedes = [];
-              if (sedesChoices) {
-                  const val = sedesChoices.getValue(true);
-                  if (Array.isArray(val)) selectedSedes = val.map(String);
-                  else if (val) selectedSedes = [String(val)];
-              } else if (UI.sedesSelect) {
-                  selectedSedes = Array.from(UI.sedesSelect.options).filter(o => o.selected).map(o => String(o.value));
-              }
-
-              const helpTextEl = document.getElementById('ayuda-destinatarios');
+              document.getElementById('btn-new-user')?.addEventListener('click', () => this.open(false));
+              document.getElementById('user-modal-close')?.addEventListener('click', () => this.close());
+              document.getElementById('user-modal-cancel')?.addEventListener('click', () => this.close());
               
-              if (selectedSedes.length === 0) {
-                  if (destChoices) {
-                      destChoices.clearStore();
-                      destChoices.disable();
-                  }
-                  UI.destSelect.disabled = true;
-                  
-                  if (helpTextEl) {
-                      helpTextEl.textContent = "Debe seleccionar al menos una Sede para ver las áreas disponibles.";
-                      helpTextEl.style.opacity = "0.6";
-                      helpTextEl.classList.add('has-text-danger');
-                  }
-                  return; 
-              }
-
-              if (helpTextEl) {
-                  helpTextEl.textContent = "O bien seleccione carreras/áreas específicas:";
-                  helpTextEl.style.opacity = "1";
-                  helpTextEl.classList.remove('has-text-danger');
-              }
-              
-              UI.destSelect.disabled = false;
-
-              let unionAreas = new Set();
-              selectedSedes.forEach(sid => {
-                  // Fallback para asegurarnos que tome el ID sin problemas de tipo de dato
-                  const areasDeLaSede = areasBySede[sid] || areasBySede[Number(sid)] || [];
-                  areasDeLaSede.forEach(a => unionAreas.add(String(a.id)));
+              document.querySelectorAll('[data-edit-user-id]').forEach(btn => {
+                  btn.addEventListener('click', (e) => {
+                      const el = e.currentTarget;
+                      const fullName = el.dataset.editUserName || '';
+                      const parts = fullName.split(' ');
+                      this.open(true, {
+                          id: el.dataset.editUserId,
+                          firstName: parts[0] || '',
+                          lastName: parts.slice(1).join(' ') || '',
+                          email: el.dataset.editUserEmail,
+                          role: el.dataset.editUserRole,
+                          areas: el.dataset.editUserAreas ? el.dataset.editUserAreas.split(',') : []
+                      });
+                  });
               });
 
-              const allowedIds = Array.from(unionAreas);
-              this.applyAllowedAreas(allowedIds);
-          },
+              this.btnSave?.addEventListener('click', () => {
+                  if(this.form.checkValidity()) this.form.submit();
+                  else this.form.reportValidity();
+              });
+          }
+      };
+      // ==========================================
+      // 8. MODAL DE ELIMINACIÓN (USUARIOS)
+      // ==========================================
+      const UserDeleteModal = {
+          modal: document.getElementById('confirm-delete-user-modal'),
+          nameDisplay: document.getElementById('confirm-delete-user-name'),
+          btnYes: document.getElementById('confirm-delete-user-yes'),
+          form: document.getElementById('confirm-delete-form'),
+          currentUrl: '',
 
-          applyAllowedAreas(allowedIds) {
-              if (!UI.destSelect) return;
-              
-              if (destChoices) {
-                  // Recuperar lo que el usuario ya había seleccionado
-                  const current = destChoices.getValue(true);
-                  const selectedArray = Array.isArray(current) ? current.map(String) : (current ? [String(current)] : []);
-                  
-                  // **AQUÍ ESTÁ LA MAGIA**: Filtramos desde la Lista Maestra en memoria, no desde el HTML
-                  const filteredData = this.masterAreas.filter(area => allowedIds.includes(area.value));
-                  
-                  destChoices.clearStore();
-                  destChoices.setChoices(filteredData, 'value', 'label', true);
-                  
-                  if (filteredData.length > 0) {
-                      destChoices.enable(); // Habilita el input visualmente
-                      // Volver a marcar las opciones que ya estaban seleccionadas y siguen siendo válidas
-                      selectedArray.forEach(v => {
-                          if (allowedIds.includes(v)) destChoices.setChoiceByValue(v);
-                      });
-                  } else {
-                      destChoices.disable();
-                  }
-              } else {
-                  // Modo sin plugin (Nativo)
-                  Array.from(UI.destSelect.options).forEach(opt => {
-                      const isAllowed = allowedIds.includes(String(opt.value));
-                      opt.disabled = !isAllowed;
-                      opt.hidden = !isAllowed;
-                      if (!isAllowed) opt.selected = false;
+          open(url, name) {
+              if(!this.modal) return;
+              this.currentUrl = url;
+              if(this.nameDisplay) this.nameDisplay.textContent = name;
+              this.modal.classList.add('is-active');
+          },
+          close() {
+              if(!this.modal) return;
+              this.modal.classList.remove('is-active');
+              this.currentUrl = '';
+          },
+          init() {
+              document.querySelectorAll('.btn-delete-user').forEach(btn => {
+                  btn.addEventListener('click', (e) => {
+                      e.preventDefault();
+                      const url = e.currentTarget.dataset.deleteUrl;
+                      const name = e.currentTarget.dataset.userName;
+                      this.open(url, name);
                   });
+              });
+
+              document.getElementById('confirm-delete-user-close')?.addEventListener('click', () => this.close());
+              document.getElementById('confirm-delete-user-no')?.addEventListener('click', () => this.close());
+              
+              this.btnYes?.addEventListener('click', () => {
+                  if(this.currentUrl && this.form) {
+                      this.form.action = this.currentUrl;
+                      this.form.submit();
+                  }
+              });
+          }
+      };
+      // ==========================================
+      // 8.1. MODAL DE SELECCIÓN "VER EN MURAL"
+      // ==========================================
+      const MuralViewModal = {
+          modal: document.getElementById('mural-areas-modal'),
+          list: document.getElementById('mural-areas-list'),
+          
+          open(areasStr) {
+              if (!this.modal || !this.list) return;
+              this.list.innerHTML = '';
+              
+              // El formato viene como "1|Ingeniería;2|Medicina;"
+              const areas = areasStr.split(';').filter(a => a.trim() !== '');
+              
+              if (areas.length === 1) {
+                  // Si solo hay un área, redirige directamente a React
+                  const id = areas[0].split('|')[0];
+                  window.location.href = `/mural/${id}`;
+                  return;
               }
+              
+              // Si hay múltiples áreas, dibujamos los botones en el modal
+              areas.forEach(a => {
+                  const parts = a.split('|');
+                  if(parts.length === 2) {
+                      const btn = document.createElement('a');
+                      btn.className = 'button is-info is-light m-1';
+                      btn.href = `/mural/${parts[0]}`; // Ruta hacia React
+                      btn.textContent = parts[1];
+                      this.list.appendChild(btn);
+                  }
+              });
+              this.modal.classList.add('is-active');
+          },
+          
+          close() {
+              if (this.modal) this.modal.classList.remove('is-active');
+          },
+          
+          init() {
+              // Asignar el evento a todos los botones "Ver en el mural"
+              document.querySelectorAll('.btn-view-mural').forEach(btn => {
+                  btn.addEventListener('click', (e) => {
+                      e.preventDefault();
+                      this.open(e.currentTarget.dataset.areasText || '');
+                  });
+              });
+
+              document.getElementById('mural-areas-close')?.addEventListener('click', () => this.close());
+              document.getElementById('mural-areas-cancel')?.addEventListener('click', () => this.close());
+          }
+      };
+      // ==========================================
+      // 8.6. MODAL DE ELIMINACIÓN (CONTENIDOS)
+      // ==========================================
+      const ContentDeleteModal = {
+          modal: document.getElementById('confirm-delete-modal'),
+          titleDisplay: document.getElementById('confirm-delete-item'),
+          btnYes: document.getElementById('confirm-delete-yes'),
+          form: document.getElementById('confirm-delete-form'),
+          currentUrl: '',
+
+          open(url, title) {
+              if(!this.modal) return;
+              this.currentUrl = url;
+              if(this.titleDisplay) this.titleDisplay.textContent = title;
+              this.modal.classList.add('is-active');
+          },
+          close() {
+              if(!this.modal) return;
+              this.modal.classList.remove('is-active');
+              this.currentUrl = '';
+          },
+          init() {
+              // Buscar todos los botones rojos de basurero en la tabla de contenidos
+              document.querySelectorAll('.btn-delete-content').forEach(btn => {
+                  btn.addEventListener('click', (e) => {
+                      e.preventDefault();
+                      const url = e.currentTarget.dataset.deleteUrl;
+                      const title = e.currentTarget.dataset.deleteTitle;
+                      this.open(url, title);
+                  });
+              });
+
+              document.getElementById('confirm-delete-close')?.addEventListener('click', () => this.close());
+              document.getElementById('confirm-delete-no')?.addEventListener('click', () => this.close());
+              
+              this.btnYes?.addEventListener('click', () => {
+                  if(this.currentUrl && this.form) {
+                      this.form.action = this.currentUrl;
+                      this.form.submit();
+                  }
+              });
           }
       };
 
       // ==========================================
-      // 8. ASIGNACIÓN DE EVENTOS (LISTENERS)
+      // 9. INICIALIZACIÓN GENERAL
       // ==========================================
-      const initEvents = () => {
-          // Inicializar vistas y menús
-          Navigation.init();
-          LocationManager.init();
+      const h = location.hash;
+      const urlParams = new URLSearchParams(window.location.search);
+      const isPublicado = urlParams.get('estado') === 'PUBLICADO';
 
-          // Navbar mobile
-          document.querySelector('.navbar-burger')?.addEventListener('click', function() {
-              this.classList.toggle('is-active');
-              document.getElementById(this.dataset.target)?.classList.toggle('is-active');
-          });
+      if (h === '#profile') {
+          Navigation.setActiveBtn(UI.btnMiPerfil); Navigation.showPanel('profile');
+      } else if (h === '#users') {
+          Navigation.setActiveBtn(UI.btnGestUsuarios); Navigation.showPanel('users');
+      } else if (isPublicado || h === '#list') {
+          Navigation.setActiveBtn(UI.btnContenido); Navigation.showPanel('list');
+      } else {
+          Navigation.setActiveBtn(UI.btnCrear); Navigation.showPanel('create');
+      }
 
-          // Eventos Navegación principal
-            UI.btnCrear?.addEventListener('click', (e) => {
-              e.preventDefault();
-              // Si el formulario no existe en el DOM (por ejemplo venimos de 'Lista De Contenidos'),
-              // redirigimos para forzar render en servidor.
-              if (!UI.form) {
-                window.location.href = baseGestUrl + '#content-form';
-                return;
-              }
-              Navigation.setActiveBtn(UI.btnCrear);
-              Navigation.showPanel('create');
-            });
-          UI.btnContenido?.addEventListener('click', (e) => { e.preventDefault(); window.location.href = baseGestUrl + '?estado=PUBLICADO#list'; });
-          UI.btnMiPerfil?.addEventListener('click', (e) => { e.preventDefault(); Navigation.setActiveBtn(UI.btnMiPerfil); Navigation.showPanel('profile'); });
-          UI.btnGestUsuarios?.addEventListener('click', (e) => { e.preventDefault(); UI.usersSection ? (Navigation.setActiveBtn(UI.btnGestUsuarios), Navigation.showPanel('users')) : window.location.href = baseGestUrl + '#users'; });
+      UI.btnCrear?.addEventListener('click', (e) => { 
+          if (UI.form) { e.preventDefault(); Navigation.setActiveBtn(UI.btnCrear); Navigation.showPanel('create'); }
+      });
 
-          // Inputs en tiempo real para vista previa
-          [UI.tituloInput, UI.descInput, UI.tipoInput, UI.tipoOtroInput, UI.fechaInput, UI.areaInput, UI.colorInput, UI.contenidoInput].forEach(el => {
-              el?.addEventListener('input', () => PreviewManager.update());
-              el?.addEventListener('change', () => PreviewManager.update());
-          });
+      UI.btnContenido?.addEventListener('click', (e) => { 
+          if (UI.publishedListing) { e.preventDefault(); Navigation.setActiveBtn(UI.btnContenido); Navigation.showPanel('list'); }
+      });
 
-          // Archivos Adicionales
-          UI.addFileBtn?.addEventListener('click', () => {
-              UI.fileInputsContainer.appendChild(FileManager.createBlock());
-          });
+      UI.btnMiPerfil?.addEventListener('click', (e) => { 
+          e.preventDefault(); Navigation.setActiveBtn(UI.btnMiPerfil); Navigation.showPanel('profile'); 
+      });
 
-            // Asegurar que los inputs existentes tengan el listener y el atributo `accept`
-            FileManager.getInputs().forEach(input => {
-              try {
-                if (input.dataset._fileListener) return;
-                input.addEventListener('change', () => {
-                  const fileBlock = input.closest('.file-block') || input.parentElement;
-                  const fname = fileBlock?.querySelector('.file-name') || fileBlock?.querySelector('.file-name-display');
-                  if (fname) fname.textContent = input.files.length > 1 ? `${input.files.length} archivos` : (input.files[0]?.name || 'No file chosen');
-                  PreviewManager.update();
-                });
-                if (acceptStr) input.setAttribute('accept', acceptStr);
-                input.dataset._fileListener = '1';
-              } catch (e) {}
-            });
+      UI.btnGestUsuarios?.addEventListener('click', (e) => { 
+          e.preventDefault(); 
+          if(UI.usersSection) { Navigation.setActiveBtn(UI.btnGestUsuarios); Navigation.showPanel('users'); }
+      });
 
-          // Tipo "Otro" Logic
-          UI.tipoInput?.addEventListener('change', (e) => {
-              if (e.target.value === 'OTRO') showElement(UI.tipoOtroWrapper);
-              else { hideElement(UI.tipoOtroWrapper); if(UI.tipoOtroInput) UI.tipoOtroInput.value = ''; }
-          });
+      [UI.tituloInput, UI.descInput, UI.tipoInput, UI.tipoOtroInput, UI.colorInput].forEach(el => {
+          el?.addEventListener('input', () => PreviewManager.update());
+          el?.addEventListener('change', () => PreviewManager.update());
+      });
 
-          // Checkbox Prioridad (Banner)
-          UI.prioridadCheckbox?.addEventListener('change', (e) => {
-              e.target.checked ? showElement(UI.breveDescWrapper) : hideElement(UI.breveDescWrapper);
-          });
+      const acceptImagesOnly = '.jpg,.jpeg,.png,.webp';
+      
+      UI.tipoInput?.addEventListener('change', (e) => {
+          const isAlerta = (e.target.value === 'ALERTA');
+          const warning = document.getElementById('alerta-file-warning');
+          
+          // 1. Mostrar/Ocultar advertencia visual
+          if (isAlerta) {
+              warning?.classList.remove('is-hidden');
+          } else {
+              warning?.classList.add('is-hidden');
+          }
 
-          // Pre-Submit: Validación y Sincronización de Selects
-          UI.form?.addEventListener('submit', (e) => {
-              // Guardar botón que disparó la acción
-              const hiddenAct = document.getElementById('form-accion');
-              if (hiddenAct && e.submitter?.name === 'accion') hiddenAct.value = e.submitter.value;
-
-              // Sync multi selects
-              document.querySelectorAll('input._hidden_multi_val').forEach(n => n.remove());
-              UI.form.querySelectorAll('select[multiple]').forEach(sel => {
-                  const selected = Array.from(sel.options).filter(o => o.selected).map(o => o.value);
-                  selected.forEach(v => {
-                      const h = document.createElement('input');
-                      h.type = 'hidden'; h.name = sel.name; h.value = v; h.className = '_hidden_multi_val';
-                      UI.form.appendChild(h);
-                  });
-              });
-
-              // Validar archivos
-              const errors = FileManager.validate(FileManager.getAllFiles());
-              if (errors.length > 0) {
-                  e.preventDefault();
-                  FileManager.renderErrors(errors);
-                  window.scrollTo({ top: UI.fileErrorsContainer.offsetTop - 80, behavior: 'smooth' });
-              }
-          });
-      };
-
-      // Auto-Actualización de la lista de publicados (Polling)
-      const setupContenidoPolling = (intervalSeconds) => {
-          const container = document.getElementById('contenidos-list');
-          if(!container) return;
-          let polling = true;
-          document.addEventListener('visibilitychange', () => { polling = !document.hidden; });
-
-          setInterval(async () => {
-              if(!polling) return;
-              try {
-                  const res = await fetch(window.location.href, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-                  if(res.ok) {
-                      const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
-                      const remote = doc.getElementById('contenidos-list');
-                      if(remote) container.innerHTML = remote.innerHTML;
+          // 2. Filtrar archivos: Cambiar qué extensiones acepta el input
+          const currentInputs = UI.form.querySelectorAll('input[type="file"]');
+          currentInputs.forEach(input => {
+              input.setAttribute('accept', isAlerta ? acceptImagesOnly : acceptStr);
+              
+              // Si el usuario ya había subido un PDF y luego cambió a "Alerta", lo borramos y le avisamos
+              if (isAlerta && input.files.length > 0) {
+                  const file = input.files[0];
+                  const ext = file.name.split('.').pop().toLowerCase();
+                  if (!['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
+                      alert("El archivo '" + file.name + "' no es válido para una Alerta. Por favor seleccione una imagen.");
+                      input.value = ''; // Limpiamos el archivo
+                      const fnameDisplay = input.parentElement.querySelector('.file-name');
+                      if(fnameDisplay) fnameDisplay.textContent = 'No file chosen';
                   }
-              } catch(e) {}
-          }, intervalSeconds * 1000);
-      };
+              }
+          });
 
-      // ==========================================
-      // 9. EJECUCIÓN INICIAL
-      // ==========================================
-      initEvents();
+          // 3. Mantener la lógica original del campo 'OTRO'
+          if (e.target.value === 'OTRO') {
+              showElement(UI.tipoOtroWrapper);
+          } else { 
+              hideElement(UI.tipoOtroWrapper); 
+              if(UI.tipoOtroInput) UI.tipoOtroInput.value = ''; 
+          }
+      });
+
+      UI.addFileBtn?.addEventListener('click', () => UI.fileInputsContainer.appendChild(FileManager.createBlock()));
+      
+      const firstFileInput = UI.fileInputsContainer?.querySelector('input[type="file"]');
+      if (firstFileInput) {
+          firstFileInput.addEventListener('change', () => {
+              const fname = firstFileInput.parentElement.querySelector('.file-name');
+              if (fname) fname.textContent = firstFileInput.files[0]?.name || 'No file chosen';
+              PreviewManager.update();
+          });
+      }
+
+      // Eliminar visualmente y registrar en backend los archivos existentes
+      document.querySelectorAll('.btn-remove-existing').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+              const el = e.currentTarget;
+              const fileId = el.dataset.id;
+              
+              // Crear un input oculto con el ID del archivo a borrar para el backend
+              const hiddenInput = document.createElement('input');
+              hiddenInput.type = 'hidden';
+              hiddenInput.name = 'remove_archivos';
+              hiddenInput.value = fileId;
+              UI.form.appendChild(hiddenInput);
+              
+              // Quitar el bloque visualmente
+              el.closest('.existing-file').remove();
+          });
+      });
+
+      // Arrancar módulos
+      
       PreviewManager.update();
-      setupContenidoPolling(10);
-  });
+      UserModal.init();
+      UserDeleteModal.init();
+      MuralViewModal.init();
+      ContentDeleteModal.init();
+    });
   </script>

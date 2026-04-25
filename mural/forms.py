@@ -1,23 +1,21 @@
+# mural/forms.py
 from django import forms
 from django.db.models import Q
 from .models import Contenido, Archivo, Area
 
-NIVELES_CHOICES = [
-    ('U', 'Universidad (U)'),
-    ('IP', 'Instituto Profesional (IP)'),
-    ('CFT', 'Centro de Formación Técnica (CFT)'),
-    ('GEN', 'General (GEN)'),
-]
-
 class ContenidoForm(forms.ModelForm):
-    breve_descripcion = forms.CharField(
-        required=False,
-        max_length=150,
-        widget=forms.TextInput(attrs={"id": "form-desc", "class": "input", "maxlength": "150", "placeholder": "Detalle breve (150 caracteres)"})
-    )
-    prioridad = forms.BooleanField(
-        required=False,
-        widget=forms.CheckboxInput(attrs={"id": "form-prioridad"})
+    # Definimos colores reales (Hex) para que React los lea correctamente
+    COLOR_CHOICES = [
+        ('#005c3c', 'Verde Institucional'),
+        ("#123a8a", 'Azul Oscuro'),
+        ('#17a2b8', 'Celeste Info'),
+        ('#ffc107', 'Amarillo'),
+        ('#dc3545', 'Rojo Peligro'),
+    ]
+    color = forms.ChoiceField(
+        choices=COLOR_CHOICES, 
+        required=False, 
+        widget=forms.Select(attrs={"id": "form-color", "class": "select"})
     )
     destinatarios = forms.ModelMultipleChoiceField(
         queryset=Area.objects.all(),
@@ -29,113 +27,79 @@ class ContenidoForm(forms.ModelForm):
     fecha_publicacion_programada = forms.DateTimeField(
         required=False,
         widget=forms.DateTimeInput(format='%Y-%m-%dT%H:%M', attrs={"type": "datetime-local", "id": "form-fecha-publicacion", "class": "input"}),
-        help_text='Si se especifica, el contenido quedará en estado "En Espera" hasta esa fecha.'
     )
 
     fecha_limite = forms.DateTimeField(
         required=False,
         widget=forms.DateTimeInput(format='%Y-%m-%dT%H:%M', attrs={"type": "datetime-local", "id": "form-fecha", "class": "input"}),
-        help_text='Fecha de expiración aplicable a las áreas seleccionadas (opcional).'
     )
 
     niveles_destino = forms.MultipleChoiceField(
         choices=[(Area.NIVEL_U, 'Universidad (U)'), (Area.NIVEL_IP, 'Instituto Profesional (IP)'), (Area.NIVEL_CFT, 'Centro de Formación Técnica (CFT)'), (Area.NIVEL_GEN, 'General (GEN)')],
         required=False,
         widget=forms.CheckboxSelectMultiple(attrs={"id": "form-niveles", "class": "checkboxes"}),
-        help_text='Seleccione niveles para publicar a todas las carreras de esos niveles (opcional).'
     )
-
-    def __init__(self, *args, **kwargs):
-        # Permitimos pasar el usuario actual para filtrar destinos y establecer comportamiento DAE
-        user = kwargs.pop('user', None)
-        super().__init__(*args, **kwargs)
-        # guardar referencia al usuario para validaciones posteriores
-        self.user = user
-
-        try:
-            if user is None:
-                # sin usuario, mostrar todas por defecto
-                areas_qs = Area.objects.all()
-            elif user.is_superuser:
-                areas_qs = Area.objects.all()
-            else:
-                areas_qs = Area.objects.filter(Q(usuarios=user) | Q(usuario=user)).distinct()
-
-            # Filtrar destinatarios al conjunto pertinente al usuario
-            self.fields['destinatarios'].queryset = areas_qs
-            # No usamos un selector adicional; `destinatarios` contiene las áreas disponibles según el usuario
-
-            # Si el usuario tiene permisos tipo DAE (aquí: pertenece a nivel GEN o es superuser), aseguramos widget multi-select
-            is_dae_like = user.is_superuser if user else False
-            if user and not is_dae_like:
-                # si el usuario tiene asignaciones en nivel GEN lo consideramos DAE-like
-                is_dae_like = areas_qs.filter(nivel_formacion=Area.NIVEL_GEN).exists()
-
-            # mantener widget SelectMultiple (queryset ya limita las opciones para no-DAE)
-            self.fields['destinatarios'].widget = forms.SelectMultiple(attrs={"id": "form-destinatarios", "class": "select"})
-
-            # Preselección por defecto: si el usuario no es superuser, seleccionar sus áreas
-            if user and not user.is_superuser:
-                try:
-                    self.initial['destinatarios'] = list(areas_qs.values_list('id', flat=True))
-                except Exception:
-                    pass
-        except Exception:
-            # si algo falla, dejar comportamiento por defecto
-            pass
 
     class Meta:
         model = Contenido
-        # Ajustado a los nombres de campo en operatividad.models. Se mantiene
-        # el id de los widgets para compatibilidad con las plantillas existentes.
-        fields = [
-            "titulo",
-            "breve_descripcion",
-            "prioridad",
-            "tipo_contenido",
-            "color",
-        ]# NO incluimos 'area_origen' aquí, la asignaremos en la vista automáticamente
+        fields = ["titulo", "contenido", "tipo_contenido", "color"]
         widgets = {
-            "breve_descripcion": forms.TextInput(attrs={"id": "form-desc", "class": "input", "maxlength": "150", "placeholder": "Detalle breve (150 caracteres)"}),
-            # 'prioridad' se renderiza como checkbox por defecto; si el modelo tiene el campo,
-            # Django usará CheckboxInput. No forzamos widget aquí para mantener compatibilidad.
-            # fecha_limite es ahora un campo del formulario, no un campo del modelo
             "titulo": forms.TextInput(attrs={"id": "form-titulo", "class": "input", "placeholder": "Ingrese Título"}),
+            # Mapeamos 'contenido' al ID 'form-desc' para que la vista previa JS lo reconozca
+            "contenido": forms.Textarea(attrs={"id": "form-desc", "class": "input", "placeholder": "Detalle completo del contenido..."}),
             "tipo_contenido": forms.Select(attrs={"id": "form-tipo", "class": "select"}),
             "color": forms.Select(attrs={"id": "form-color", "class": "select"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        self.user = user
+
+        try:
+            if user is None or user.is_superuser:
+                areas_qs = Area.objects.all()
+            else:
+                # CORRECCIÓN CLAVE: Relación correcta con AsignacionArea
+                areas_qs = Area.objects.filter(asignaciones__usuario=user).distinct()
+
+            self.fields['destinatarios'].queryset = areas_qs
+
+            if user and not user.is_superuser:
+                self.initial['destinatarios'] = list(areas_qs.values_list('id', flat=True))
+        except Exception:
+            pass
+
     def clean(self):
         cleaned_data = super().clean()
         destinatarios = cleaned_data.get('destinatarios')
         niveles_destino = cleaned_data.get('niveles_destino')
+        tipo_contenido = cleaned_data.get('tipo_contenido')
 
-        # VALIDACIÓN: Debe haber al menos un destino (áreas específicas O un nivel masivo)
+        # REGLA DE NEGOCIO: Forzar colores según el tipo de contenido
+        if tipo_contenido == Contenido.TIPO_CARD:
+            cleaned_data['color'] = '#D0F0C0' # Verde claro fijo para tarjetas
+        elif tipo_contenido == Contenido.TIPO_ALERTA:
+            cleaned_data['color'] = '#1e824c' # Verde oscuro fijo para alertas
+        
         if not destinatarios and not niveles_destino:
-            raise forms.ValidationError("Debes seleccionar al menos un destinatario (una carrera o un nivel completo).")
+            raise forms.ValidationError("Debes seleccionar al menos un destinatario (carrera o nivel).")
 
-        # Si el usuario NO es DAE-like, asegurar que los destinatarios seleccionados pertenezcan a sus allowed_areas
         user = getattr(self, 'user', None)
         if user and not user.is_superuser:
-            # áreas asignadas al usuario
-            allowed = Area.objects.filter(Q(usuarios=user) | Q(usuario=user)).distinct()
-            # si el usuario no está en GEN, no puede usar niveles_destino
+            allowed = Area.objects.filter(asignaciones__usuario=user).distinct()
             is_dae_like = allowed.filter(nivel_formacion=Area.NIVEL_GEN).exists()
+            
             if not is_dae_like:
-                # validar que niveles_destino no esté usado
                 if niveles_destino:
                     raise forms.ValidationError("No puede publicar por nivel: su cuenta no pertenece a un Área GEN.")
-                # validar que todos los destinatarios pertenezcan a allowed
-                bad = []
-                for a in list(destinatarios or []):
-                    if not allowed.filter(pk=a.pk).exists():
-                        bad.append(str(a))
+                bad = [str(a) for a in list(destinatarios or []) if not allowed.filter(pk=a.pk).exists()]
                 if bad:
                     raise forms.ValidationError(f"No puede seleccionar áreas fuera de su asignación: {', '.join(bad)}")
         
         return cleaned_data
 
-
 class ArchivoForm(forms.ModelForm):
     class Meta:
         model = Archivo
-        fields = ["archivo", "tipo_archivo"]
+        fields = ["ruta_archivo", "tipo_de_archivo"]

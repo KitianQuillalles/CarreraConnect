@@ -1,3 +1,4 @@
+# mural/models.py
 """
 Compatibilidad de modelos para la app `mural`.
 

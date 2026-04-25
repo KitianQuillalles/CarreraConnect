@@ -10,8 +10,6 @@ from .models import (
     AreaDestinatario,
     Archivo,
     UsuarioProxy,
-    Ubicacion,
-    Piso,
 )
 
 
@@ -47,9 +45,9 @@ class AsignacionAreaAdmin(admin.ModelAdmin):
 
 @admin.register(Contenido)
 class ContenidoAdmin(admin.ModelAdmin):
-    list_display = ('titulo', 'area_origen', 'prioridad', 'fecha_creacion')
+    list_display = ('titulo', 'tipo_contenido', 'fecha_creacion')
     list_filter = ('tipo_contenido',)
-    search_fields = ('titulo', 'breve_descripcion')
+    search_fields = ('titulo', 'contenido')
 
 
 @admin.register(AreaDestinatario)
@@ -60,19 +58,7 @@ class AreaDestinatarioAdmin(admin.ModelAdmin):
 
 @admin.register(Archivo)
 class ArchivoAdmin(admin.ModelAdmin):
-    list_display = ('archivo', 'contenido', 'tipo_archivo')
-
-
-@admin.register(Ubicacion)
-class UbicacionAdmin(admin.ModelAdmin):
-    list_display = ('sede', 'comuna')
-    search_fields = ('sede', 'comuna')
-
-
-@admin.register(Piso)
-class PisoAdmin(admin.ModelAdmin):
-    list_display = ('piso', 'area', 'ubicacion')
-    search_fields = ('piso', 'area__nombre', 'ubicacion__sede')
+    list_display = ('ruta_archivo', 'contenido', 'tipo_de_archivo')
 
 
 class UsuarioProxyForm(forms.ModelForm):

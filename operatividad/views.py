@@ -1,3 +1,4 @@
+# operatividad/views.py
 import logging
 
 from django.contrib.auth import authenticate, get_user_model, login, logout
@@ -172,7 +173,7 @@ def mi_perfil(request):
 
 @login_required
 def editar_usuario(request, pk):
-    user = get_object_or_404(User, pk=pk)
+    user = get_object_or_404(User, pk=pk) 
     if request.method == 'POST':
         nombre = request.POST.get('nombre') or request.POST.get('first_name')
         apellidos = request.POST.get('apellidos') or request.POST.get('last_name')
